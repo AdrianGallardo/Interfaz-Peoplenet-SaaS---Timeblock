@@ -1,0 +1,45 @@
+'SGB_M4C_EXPORT_CONTROL(sIDFileControl, sPath, sIDEnvio)
+'Genera el archivo Control con los nombres de los archivos generados por la Interfaz en este env¿o.
+sText = ""
+sIDArchivo = SGB_ARG_ID_ARCHIVO
+sRuta = SGB_ARG_RUTA
+sArchivo = sRuta + sIDArchivo + ".txt"
+sIDEnvio = ToString(SGB_ARG_ID_ENVIO, 0)
+
+'Obteniendo los Archivos generados en el Env¿o.
+SGB_M4C_ARCHIVOS_ENVIO.DESTROYBLOCK()
+sSql = "FROM &SGB_M4C_ENVIO_AR A, SGB_M4C_ARCHIVO B "
+sSql = sSql + "WHERE A.ID_ARCHIVO = B.ID_ARCHIVO(+) "
+sSql = sSql + "AND A.ID_ORGANIZATION = B.ID_ORGANIZATION(+) "
+sSql = sSql + "AND A.ID_ENVIO = '" + sIDEnvio + "' "
+SGB_M4C_ARCHIVOS_ENVIO.SGB_PR_FILTRO_SELECT = sSql
+SGB_M4C_ARCHIVOS_ENVIO.Load_Blk()
+
+iRegSGB_M4C_ARCHIVOS_ENVIO = SGB_M4C_ARCHIVOS_ENVIO.Count()
+For i = 0 To iRegSGB_M4C_ARCHIVOS_ENVIO - 1
+  SGB_M4C_ARCHIVOS_ENVIO.MoveTo(i)
+  sIDArchivo = SGB_M4C_ARCHIVOS_ENVIO.ID_ARCHIVO
+
+  'Obteniendo el ¿ltimo estado del archivo enviado.
+  SGB_M4C_ULT_EDO_ARC.DESTROYBLOCK()
+  SGB_M4C_ULT_EDO_ARC.SGB_PR_ID_ARCHIVO = sIDArchivo
+  SGB_M4C_ULT_EDO_ARC.Load_Blk()
+
+  iRegSGB_M4C_ULT_EDO_ARC = SGB_M4C_ULT_EDO_ARC.Count()
+  If iRegSGB_M4C_ULT_EDO_ARC > 0 Then
+    SGB_M4C_ULT_EDO_ARC.Begin()
+
+    'S¿lo se registran archivos que tengan como ¿ltimo estado 2(Por Enviar).
+    iIDEstadoArc = SGB_M4C_ULT_EDO_ARC.ID_ESTADO
+    If iIDEstadoArc = 2 Then
+      sText = sText + SGB_M4C_ULT_EDO_ARC.ID_ARCHIVO + Chr(13)
+    EndIf
+
+  EndIf
+Next
+
+If sText <> "" And sText <> NullValue() Then
+  ConcatFile(sArchivo, sText, M4_TRUE, M4_ENCODING_UTF8)
+Else
+  SetLog(M4_ERRORLOG,60,4,400,"No fue posible registrar los archivos por enviar en el archivo Control " + ToString(TodayNow(),0))
+EndIf

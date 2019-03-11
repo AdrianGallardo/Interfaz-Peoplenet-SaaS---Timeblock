@@ -1,0 +1,34 @@
+'SGB_GBS_PLANIF_TASK(sProcessName, sTimeRule, sIdItem, sIDEnvio)
+'Planifica la tarea pasada en el argumento SGB_ARG_ID_ITEM
+'Schedule task data
+sProcessName = SGB_ARG_PROCESS_NAME'"ENVIO M4CLOUD"
+sTimeRule = SGB_ARG_TIME_RULE'"ASAP"
+
+'Channel to schedule
+sIdM4Object = chr(Double_quote) + "SRGB_ITZ_M4C" + chr(Double_quote)
+sIdNode = chr(Double_quote) + "SRGB_ITZ_M4C" + chr(Double_quote)
+sIdItem = chr(Double_quote) + SGB_ARG_ID_ITEM + chr(Double_quote)
+
+'Job scheduler channel
+sJSIdM4Object = "C4_JS_SCHEDULING"
+sJSIdNode = "N4_JS_SCHEDULINGS"
+sJSIdItem = "SUBMIT_JOB"
+
+'Arguments
+sIntentos = chr(Double_quote) + ToString(SGB_ARG_INTENTOS, 0) + chr(Double_quote)
+
+'Code to execute
+sCode = "OpenChannelEx(" + sIdM4Object + ", " + sIdM4Object + ", " + ToString(M4_INSTANCE_NOT_SHARED,0) + ", " + ToString(M4_AUTOLOAD_OFF,0) + "," + chr(34) + chr(34)
+sCode = sCode + ", M4_ORGANIZATION_L2_TYPE_ANY,4) : " + "ChannelCall("
+sCode = sCode + sIntentos + ", " + sIdM4Object + ", " + sIdNode + ", "+ sIdItem + ")"
+
+'Open Job Scheduler channel
+x = OpenChannel(sJSIdM4Object, sJSIdM4Object, M4_INSTANCE_NOT_SHARED, M4_AUTOLOAD_OFF)
+
+'Schedule task
+nBox = ChannelCall(sProcessName, sCode, sTimeRule, sJSIdM4Object, sJSIdNode, sJSIdItem)
+
+If nbox > 0 Then
+  'La tarea ha sido asignada en el cuadro %0:s del planificador de tareas.
+  SetLog(0, 16, 110, 116, ToString(nbox,0))
+EndIf

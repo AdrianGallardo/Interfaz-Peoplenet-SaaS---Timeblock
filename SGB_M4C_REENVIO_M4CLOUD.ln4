@@ -1,0 +1,119 @@
+'SGB_M4C_REENVIO_M4CLOUD(SGB_ARG_ID_ENVIO)
+'El m¿todo se ejecuta desde el Job Scheduler y reenv¿a el Env¿o pasado por par¿metro.
+
+'Obteniendo la ruta del archivo.
+'SAV_PARAMS!SAV_PARAMS.RET_VALUE("CONFIGURATION","M4C","FILES_PATH")
+'sPath = SAV_PARAMS!FINAL_RETURN[0].APP_VALUE
+sPath = "/opt/meta4/intelex/"
+sSeparador = "|"
+sSeparadorMana = ";"
+sIDEnvio = ToString(SGB_ARG_ID_ENVIO, 0)
+
+SetLog(M4_DEBUGINFOLOG,60,4,400,"Ejecutando reenvio " + ToString(TodayNow(),0))
+
+SGB_M4C_ENVIO.DESTROYBLOCK()
+sSql = "FROM &SGB_M4C_ENVIO A "
+sSql = sSql + "WHERE A.ID_ENVIO = '" + sIDEnvio + "' "
+SGB_M4C_ENVIO.SGB_PR_FILTRO_SELECT = sSql
+SGB_M4C_ENVIO.Load_Blk()
+
+iRegSGB_M4C_ENVIO = SGB_M4C_ENVIO.Count()
+If iRegSGB_M4C_ENVIO > 0 Then
+  SGB_M4C_ENVIO.Begin()
+
+  'El reenv¿o ¿nicamente exporta los registros de los archivos ya generados.
+  sIDTipoColabs = "1"
+  sIDTipoMana = "2"
+  sIDTipoEstructInf = "3"
+  sIDTipoColabsInf = "4"
+
+  'Obteniendo el archivo de Colaboradores del Env¿o.
+  SGB_M4C_ARCHIVOS_ENVIO.DESTROYBLOCK()
+  sSql = "FROM &SGB_M4C_ENVIO_AR A, SGB_M4C_ARCHIVO B "
+  sSql = sSql + "WHERE A.ID_ARCHIVO = B.ID_ARCHIVO(+) "
+  sSql = sSql + "AND A.ID_ORGANIZATION = B.ID_ORGANIZATION(+) "
+  sSql = sSql + "AND A.ID_ENVIO = '" + sIDEnvio + "' "
+  sSql = sSql + "AND B.ID_TIPO = '" + sIDTipoColabs + "' "
+  SGB_M4C_ARCHIVOS_ENVIO.SGB_PR_FILTRO_SELECT = sSql
+  SGB_M4C_ARCHIVOS_ENVIO.Load_Blk()
+
+  iRegSGB_M4C_ARCHIVOS_ENVIO = SGB_M4C_ARCHIVOS_ENVIO.Count()
+  If iRegSGB_M4C_ARCHIVOS_ENVIO > 0 Then
+    SGB_M4C_ARCHIVOS_ENVIO.Begin()
+    sIDFileColabs = SGB_M4C_ARCHIVOS_ENVIO.ID_ARCHIVO
+
+    'Re generando el archivo de Colaboradores
+    SetLog(M4_DEBUGINFOLOG,60,4,400,"Re generando el archivo de Colaboradores " + ToString(TodayNow(),0))
+    SGB_M4C_EXPORT_COLA(sIDFileColabs, sPath, sSeparador)
+  EndIf
+
+  'Obteniendo el archivo de Manager del Env¿o.
+  SGB_M4C_ARCHIVOS_ENVIO.DESTROYBLOCK()
+  sSql = "FROM &SGB_M4C_ENVIO_AR A, SGB_M4C_ARCHIVO B "
+  sSql = sSql + "WHERE A.ID_ARCHIVO = B.ID_ARCHIVO(+) "
+  sSql = sSql + "AND A.ID_ORGANIZATION = B.ID_ORGANIZATION(+) "
+  sSql = sSql + "AND A.ID_ENVIO = '" + sIDEnvio + "' "
+  sSql = sSql + "AND B.ID_TIPO = '" + sIDTipoMana + "' "
+  SGB_M4C_ARCHIVOS_ENVIO.SGB_PR_FILTRO_SELECT = sSql
+  SGB_M4C_ARCHIVOS_ENVIO.Load_Blk()
+
+  iRegSGB_M4C_ARCHIVOS_ENVIO = SGB_M4C_ARCHIVOS_ENVIO.Count()
+  If iRegSGB_M4C_ARCHIVOS_ENVIO > 0 Then
+    SGB_M4C_ARCHIVOS_ENVIO.Begin()
+    sIDFileMana = SGB_M4C_ARCHIVOS_ENVIO.ID_ARCHIVO
+
+    'Re generando el archivo de Manager
+    SetLog(M4_DEBUGINFOLOG,60,4,400,"Re generando el archivo de Manager " + ToString(TodayNow(),0))
+      SGB_M4C_EXPORT_MANA(sIDFileMana, sPath, sSeparadorMana)
+  EndIf
+
+  'Obteniendo el archivo de Colaboradores Infoblock del Env¿o.
+  SGB_M4C_ARCHIVOS_ENVIO.DESTROYBLOCK()
+  sSql = "FROM &SGB_M4C_ENVIO_AR A, SGB_M4C_ARCHIVO B "
+  sSql = sSql + "WHERE A.ID_ARCHIVO = B.ID_ARCHIVO(+) "
+  sSql = sSql + "AND A.ID_ORGANIZATION = B.ID_ORGANIZATION(+) "
+  sSql = sSql + "AND A.ID_ENVIO = '" + sIDEnvio + "' "
+  sSql = sSql + "AND B.ID_TIPO = '" + sIDTipoColabsInf + "' "
+  SGB_M4C_ARCHIVOS_ENVIO.SGB_PR_FILTRO_SELECT = sSql
+  SGB_M4C_ARCHIVOS_ENVIO.Load_Blk()
+
+  iRegSGB_M4C_ARCHIVOS_ENVIO = SGB_M4C_ARCHIVOS_ENVIO.Count()
+  If iRegSGB_M4C_ARCHIVOS_ENVIO > 0 Then
+    SGB_M4C_ARCHIVOS_ENVIO.Begin()
+    sIDFileColabsInf = SGB_M4C_ARCHIVOS_ENVIO.ID_ARCHIVO
+
+    'Re generando el archivo de Colaboradores Infoblock
+    SetLog(M4_DEBUGINFOLOG,60,4,400,"Re generando el archivo de Colaboradores Infoblock " + ToString(TodayNow(),0))
+      SGB_M4C_EXPORT_COLA_INF(sIDFileColabsInf, sPath, sSeparador)
+  EndIf
+
+  'Obteniendo el archivo de Estructura Infoblock del Env¿o.
+  SGB_M4C_ARCHIVOS_ENVIO.DESTROYBLOCK()
+  sSql = "FROM &SGB_M4C_ENVIO_AR A, SGB_M4C_ARCHIVO B "
+  sSql = sSql + "WHERE A.ID_ARCHIVO = B.ID_ARCHIVO(+) "
+  sSql = sSql + "AND A.ID_ORGANIZATION = B.ID_ORGANIZATION(+) "
+  sSql = sSql + "AND A.ID_ENVIO = '" + sIDEnvio + "' "
+  sSql = sSql + "AND B.ID_TIPO = '" + sIDTipoEstructInf + "' "
+  SGB_M4C_ARCHIVOS_ENVIO.SGB_PR_FILTRO_SELECT = sSql
+  SGB_M4C_ARCHIVOS_ENVIO.Load_Blk()
+
+  iRegSGB_M4C_ARCHIVOS_ENVIO = SGB_M4C_ARCHIVOS_ENVIO.Count()
+  If iRegSGB_M4C_ARCHIVOS_ENVIO > 0 Then
+    SGB_M4C_ARCHIVOS_ENVIO.Begin()
+    sIDFileEstructInf = SGB_M4C_ARCHIVOS_ENVIO.ID_ARCHIVO
+
+    'Re generando el archivo de Estructura Infoblock
+    SetLog(M4_DEBUGINFOLOG,60,4,400,"Re generando el archivo de Estructura Infoblock " + ToString(TodayNow(),0))
+      SGB_M4C_EXPORT_ESTRUCT_INF(sIDFileEstructInf, sPath, sSeparador)
+  EndIf
+
+
+
+  'Archivo Control
+  SetLog(M4_DEBUGINFOLOG,60,4,400,"Re generando el archivo Control " + ToString(TodayNow(),0))
+  'Generando nombre de archivo
+
+  sFechaHoraNombre = SGB_M4C_CALC_NOMBRE()
+  sIDFileControl = "M4C_CONTROL_PN_" + sFechaHoraNombre
+  SGB_M4C_EXPORT_CONTROL(sIDFileControl, sPath, sIDEnvio)
+EndIf

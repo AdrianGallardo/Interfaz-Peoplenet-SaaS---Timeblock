@@ -1,0 +1,12 @@
+'SGB_M4C_EJECUTAR_ENVIO
+'Enviar archivo a M4Cloud
+
+'Programando el env¿o en el Scheduler
+sProcessName = "ENVIO M4CLOUD"
+'sTimeRule = "DATE$" + ToString(DateAdd(SGB_M4C_ENVIO.FECHA_HORA_FIN, 6, M4_HOUR))'El planificador tiene 6 hrs de diferencia.
+
+'Se programa el envío para que se ejecute de inmediato
+sTimeRule = "ASAP"
+sIDItem = "SGB_M4C_ENVIO_M4CLOUD"
+iIntentos = 0
+SGB_M4C_PLANIF_TASK(sProcessName, sTimeRule, sIDItem, iIntentos)

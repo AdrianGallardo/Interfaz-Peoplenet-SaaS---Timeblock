@@ -1,0 +1,126 @@
+'SGB_M4C_EXPORT_COLA(sIDFileColabs, sPath, sSeparator)
+'El m¿todo exporta el archivo de Colaboradores a partir de los registros de la tabla.
+
+sIDArchivo = SGB_ARG_ID_ARCHIVO
+sRuta = SGB_ARG_RUTA
+sSeparador = SGB_ARG_SEPARADOR
+sArchivo = sRuta + sIDArchivo + ".csv"
+iPorEnviar = 2
+
+SGB_M4C_REG_COLA.DESTROYBLOCK()
+sSql = "FROM &SGB_M4C_REG_COLA A "
+sSql = sSql + "WHERE A.ID_ARCHIVO = '" + sIDArchivo + "' "
+sSql = sSql + "ORDER BY A.ID_REGISTRO ASC "
+SGB_M4C_REG_COLA.SGB_PR_FILTRO_SELECT = sSql
+SGB_M4C_REG_COLA.Load_Blk()
+
+iRegSGB_M4C_REG_COLA = SGB_M4C_REG_COLA.Count()
+SetLog(M4_DEBUGINFOLOG, 60, 4, 400, "No. de Registros de Colaboradores " + ToString(iRegSGB_M4C_REG_COLA, 0) + " " + ToString(TodayNow(), 0))
+For i = 0 To iRegSGB_M4C_REG_COLA - 1
+  SGB_M4C_REG_COLA.MoveTo(i)
+
+  sText = ""
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_TP_MOVIMIENTO, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SGB_DATE_FORMAT(SGB_M4C_REG_COLA.CMX_DATE, "ddmmyyyy", "/"), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SGB_DATE_FORMAT(SGB_M4C_REG_COLA.FECHA_BAJA, "ddmmyyyy", "/"), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.STD_ID_HRP_END_REASON, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_CAUSA_DESEM, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SGB_DATE_FORMAT(SGB_M4C_REG_COLA.SSP_FEC_FIN_VACAC, "ddmmyyyy", "/"), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.STD_ID_HR, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_PRIMER_APELLIDO, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.STD_N_MAIDEN_NAME, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.STD_N_FIRST_NAME, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_TP_DOC, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_NUM_DOC, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_PAIS_EMISOR, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SGB_DATE_FORMAT(SGB_M4C_REG_COLA.CMX_DT_BIRTH, "ddmmyyyy", "/"), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_NACIONALITY, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_COUNTRY, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_SUB_GEO_DIV_ADD, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_GEO_DIV_ADD, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.STD_ID_GENDER, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_MAR_STAT, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_PHONE, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.TEL_MOV, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_EMAIL, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.STD_ID_LOCATION_TYPE, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_SIGLA_DOMIC, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ADDRESS_LINE_1, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_NUM_VIA, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_BLOQUE, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ESCALERA, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_PISO, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_PUERTA, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_GEO_PLACE, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_SUB_GEO_DIV, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_GEO_DIV, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_COUNTRY_ADD, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_DISTRIT_POSTAL, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SCO_ID_LEG_ENT, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SCO_ID_JOB_CODE, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_WORK_UNIT, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_WORK_LOC, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_CENT_COSTO, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.STD_ID_HRP_START_REASON, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.STD_ID_HR_TYPE, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_TP_GESTION, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SGB_DATE_FORMAT(SGB_M4C_REG_COLA.SSP_FEC_FIN_PR_PRU, "ddmmyyyy", "/"), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SGB_DATE_FORMAT(SGB_M4C_REG_COLA.SSP_FEC_FIN_PV_CON, "ddmmyyyy", "/"), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SCO_ID_DURATION, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_CON_NUM_SS, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_PROV_NUM_SS, ""), ",", " ") + sSeparador 'Length(2)
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_NUM_SS, ""), ",", " ") + sSeparador 'Length(8)
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_DIG_NUM_SS, ""), ",", " ") + sSeparador 'Length(2)
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_CABEC_TC1, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_GRUP_TARIFA, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_OCUPACION, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_CONV_SS, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_NUM_PLURIEMPL, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_CONT_LEGAL, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_CONTRATO_INT, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SGB_DATE_FORMAT(SGB_M4C_REG_COLA.SSP_FEC_FIN_CONTRA, "ddmmyyyy", "/"), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_REL_LAB, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(ToString(SGB_M4C_REG_COLA.SSP_VALOR_COEF_T_P, 2), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(ToString(SGB_M4C_REG_COLA.SSP_TIPO_HORAS, 2), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(ToString(SGB_M4C_REG_COLA.SSP_NUM_HORAS, 2), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_JP_REG_IRREG, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(ToString(SGB_M4C_REG_COLA.SSP_NUM_DIAS_JP, 2), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(ToString(SGB_M4C_REG_COLA.SSP_PORC_GLEGAL, 1), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_MOTIV_REDUC, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(ToString(SGB_M4C_REG_COLA.SSP_ID_CAUSA_SUST, 0), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_NSS_SUST_PROV, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_NUSS_SUST, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_NSS_SUST_DC, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(ToString(SGB_M4C_REG_COLA.SSP_PORC_MINUSVAL, 0), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SGB_DATE_FORMAT(SGB_M4C_REG_COLA.SSP_FEC_INI_A_CONT, "ddmmyyyy", "/"), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_MUJER_24, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_MUJER_SUBREPR, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(ToString(SGB_M4C_REG_COLA.SSP_DIAS_PRUEBA, 0), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_CLAUSULA_ADIC, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SCO_ID_TYPE_ADJUST, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_CONVENIO, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_CATEGORIA, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(ToString(SGB_M4C_REG_COLA.SSP_BRUTO_ANUAL, 5), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_ID_TP_SALARIO, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SGB_DATE_FORMAT(SGB_M4C_REG_COLA.SSP_FEC_ANTIGUEDAD, "ddmmyyyy", "/"), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SGB_DATE_FORMAT(SGB_M4C_REG_COLA.SSP_FEC_EXTRAS, "ddmmyyyy", "/"), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SGB_ID_SINDICATO, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_TP_IRPF, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_EST_IRPF, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_MINUSVALIA, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_CENTRO_FIS, ""), ",", " ") + sSeparador 'Centro F¿sico TRADES
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.CMX_FORMA_DE_PAGO, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SCO_ID_COMP_BANK, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.COMP_BANC_SUC, ""), ",", " ") + sSeparador 'Banco + Sucursal
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SCO_ACCOUNT_NUMBER, ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(ToString(SGB_M4C_REG_COLA.SSP_DC, 0), ""), ",", " ") + sSeparador
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_TP_PRODUCTOR, ""), ",", " ") + sSeparador 'En revisi¿n
+  sText = sText + Replace(SGB_CHK_NULL(SGB_M4C_REG_COLA.SSP_ID_TP_ACTIVIDAD, ""), ",", " ") + sSeparador 'Tipo Furgon TRADES
+
+  ConcatFile(sArchivo, sText, M4_TRUE, M4_ENCODING_UTF8)
+Next
+
+SetLog(M4_DEBUGINFOLOG, 60, 4, 400, "Archivo de Colaboradores generado " + ToString(TodayNow(), 0))
+
+'Registrando el archivo en la Bit¿cora
+SGB_M4C_REG_BIT_ARC(sIDArchivo, iPorEnviar)

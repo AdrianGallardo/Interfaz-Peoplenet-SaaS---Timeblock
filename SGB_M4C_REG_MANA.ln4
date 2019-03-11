@@ -1,0 +1,166 @@
+''SGB_M4C_REG_MANA(sIDFileColabs, sIDEnvio)
+''Realiza el registro del contenido del archivo de Colaboradores.
+'
+'sIDArchivo = SGB_ARG_ID_ARCHIVO
+'iIDEnvio = ToInt(SGB_ARG_ID_ENVIO)
+'sIDEnvio = ToString(SGB_ARG_ID_ENVIO, 0)
+'sIDOrganizacion = "0005"
+'sIDTipoManager = 2
+'iGenerado = 1
+'
+'iEstadoEnProceso = 2
+'iEdoExitoso = 3
+'iEdoError = 4
+'
+''Obteniendo los datos del Env¿o
+'SGB_M4C_ENVIO.DESTROYBLOCK()
+'sSql = "FROM &SGB_M4C_ENVIO A "
+'sSql = sSql + "WHERE A.ID_ENVIO = '" + sIDEnvio + "' "
+'SGB_M4C_ENVIO.SGB_PR_FILTRO_SELECT = sSql
+'SGB_M4C_ENVIO.Load_Blk()
+'
+'iRegSGB_M4C_ENVIO = SGB_M4C_ENVIO.Count()
+'If iRegSGB_M4C_ENVIO > 0 Then
+'  SGB_M4C_ENVIO.Begin()
+'
+'  dFechaHoraIni = SGB_M4C_ENVIO.FECHA_HORA_INI
+'  dFechaHoraFin = SGB_M4C_ENVIO.FECHA_HORA_FIN
+'
+'  'Creando el registro del Archivo
+'  SGB_M4C_ARCHIVO.AddRegister()
+'  SGB_M4C_ARCHIVO.ID_ARCHIVO = sIDArchivo
+'  SGB_M4C_ARCHIVO.ID_TIPO = sIDTipoManager
+'
+'  SetLog(M4_DEBUGINFOLOG, 60, 4, 400,"Se ha creado el registro del archivo de Colaboradores " + ToString(TodayNow(), 0))
+'
+'  If SGB_M4C_ARCHIVO.Persist_tree() <> M4_ERROR Then
+'    'Registrando el Archivo en el Env¿o
+'    SGB_M4C_ENVIO_AR.AddRegister()
+'    SGB_M4C_ENVIO_AR.ID_ENVIO = sIDEnvio
+'    SGB_M4C_ENVIO_AR.ID_ARCHIVO = sIDArchivo
+'
+'    If SGB_M4C_ENVIO_AR.Persist_tree() <> M4_ERROR Then
+'      'Leyendo los nuevos registros y cambios en la Rel Position
+'      SGB_M4C_REL_POS.DESTROYBLOCK()
+'      SGB_M4C_REL_POS.SGB_PR_ORG = sIDOrganizacion
+'      SGB_M4C_REL_POS.SGB_PR_FEC_HORA_INI = dFechaHoraIni
+'      SGB_M4C_REL_POS.SGB_PR_FEC_HORA_FIN = dFechaHoraFin
+'      SGB_M4C_REL_POS.Load_Blk()
+'
+'      iRegSGB_M4C_REL_POS = SGB_M4C_REL_POS.Count()
+'      For i = 0 To iRegSGB_M4C_REL_POS - 1
+'        SGB_M4C_REL_POS.MoveTo(i)
+'
+'        sTipoMov = "-42" 'Valor fijo
+'        sIDEmpleado = SGB_M4C_EMPLEADO_POSICION(SGB_M4C_REL_POS.ID_POSITION_CHILD,SGB_M4C_REL_POS.ID_ORGANIZATION)
+'        sTipoResp = "71" 'Valor fijo
+'        sIDMana = SGB_M4C_EMPLEADO_POSICION(SGB_M4C_REL_POS.ID_POSITION_PARENT,SGB_M4C_REL_POS.ID_ORGANIZATION)
+'        sFechaIni = FORMAT_DDMMAAAA(SGB_M4C_REL_POS.DT_START) 'DDMMAAAA
+'        sFechaFin = FORMAT_DDMMAAAA(SGB_M4C_REL_POS.DT_END) 'DDMMAAAA
+'        sNivValida = "1" 'Valor fijo
+'
+'        SGB_M4C_REG_MANA.AddRegister()
+'        SGB_M4C_REG_MANA.ID_ARCHIVO = sIDArchivo
+'        SGB_M4C_REG_MANA.TIPO_MOV = sTipoMov
+'        SGB_M4C_REG_MANA.ID_EMPLEADO = sIDEmpleado
+'        SGB_M4C_REG_MANA.TIPO_RESP = sTipoResp
+'        SGB_M4C_REG_MANA.ID_MANAGER = sIDMana
+'        SGB_M4C_REG_MANA.FECHA_INI = sFechaIni
+'        SGB_M4C_REG_MANA.FECHA_FIN = sFechaFin
+'        SGB_M4C_REG_MANA.NIV_VALIDACION = sNivValida
+'      Next
+'
+'      SGB_M4C_REG_MANA.Persist_tree()
+'      'Managers registrados
+'      SetLog(M4_DEBUGINFOLOG, 60, 4, 400, "Managers registrados " + ToString(TodayNow()))
+'      'Registrando archivo en la Bitacora
+'      SGB_M4C_REG_BIT_ARC(sIDArchivo, iGenerado)
+'
+'    Else
+'      'No fue posible generar el registro en la tabla archivo
+'      SetLog(M4_ERRORLOG, 60, 4, 400, "No fue posible registrar el archivo " + sIDArchivo + " en el Env¿o " + sIDEnvio + " " + ToString(TodayNow(), 0))
+'    EndIf
+'
+'  Else
+'    'No fue posible generar el registro en la tabla archivo
+'    SetLog(M4_ERRORLOG, 60, 4, 400, "No fue posible generar el registro en la tabla archivo " + ToString(TodayNow(), 0))
+'  EndIf
+'
+'Else
+'  'No fue posible recuperar los datos del Env¿o en el m¿todo SGB_M4C_REG_MANA
+'  SetLog(M4_ERRORLOG, 60, 4, 400, "No fue posible recuperar los datos del Env¿o en el m¿todo SGB_M4C_REG_MANA " + ToString(TodayNow(), 0))
+'EndIf
+'
+
+'NUEVO CODIGO
+
+'SGB_M4C_REG_MANA(sIDFileColabs, sIDEnvio)
+'Realiza el registro del contenido del archivo de Colaboradores.
+
+sIDArchivo = SGB_ARG_ID_ARCHIVO
+iIDEnvio = ToInt(SGB_ARG_ID_ENVIO)
+sIDEnvio = ToString(SGB_ARG_ID_ENVIO, 0)
+sIDOrganizacion = "0005"
+sIDTipoManager = 2
+iGenerado = 1
+
+iEstadoEnProceso = 2
+iEdoExitoso = 3
+iEdoError = 4
+
+'Creando el registro del Archivo
+SGB_M4C_ARCHIVO.AddRegister()
+SGB_M4C_ARCHIVO.ID_ARCHIVO = sIDArchivo
+SGB_M4C_ARCHIVO.ID_TIPO = sIDTipoManager
+
+SetLog(M4_DEBUGINFOLOG, 60, 4, 400,"Se ha creado el registro del archivo de Managers " + ToString(TodayNow(), 0))
+
+If SGB_M4C_ARCHIVO.Persist_tree() <> M4_ERROR Then
+  'Registrando el Archivo en el Envío
+  SGB_M4C_ENVIO_AR.AddRegister()
+  SGB_M4C_ENVIO_AR.ID_ENVIO = sIDEnvio
+  SGB_M4C_ENVIO_AR.ID_ARCHIVO = sIDArchivo
+
+  If SGB_M4C_ENVIO_AR.Persist_tree() <> M4_ERROR Then
+    'Leyendo los datos de los colaboradores de la organizacion 0005
+    SGB_M4C_EMPLEADOS.DESTROYBLOCK()
+    SGB_M4C_EMPLEADOS.Load_blk()
+
+    iRegSGB_M4C_EMPLEADOS = SGB_M4C_EMPLEADOS.Count()
+    For i = 0 To iRegSGB_M4C_EMPLEADOS - 1
+      SGB_M4C_EMPLEADOS.MoveTo(i)
+
+      sTipoMov = "-42" 'Valor fijo
+      sIDEmpleado = SGB_M4C_EMPLEADOS.STD_ID_HR
+      sTipoResp = "71" 'Valor fijo
+      sIDMana = SGB_M4C_EMPLEADOS.SGB_CLC_BOSS()
+      sFechaIni = FORMAT_DDMMAAAA(SGB_M4C_EMPLEADOS.SGB_PR_FEC_INI) 'DDMMAAAA
+      sFechaFin = FORMAT_DDMMAAAA(SGB_M4C_EMPLEADOS.SGB_PR_FEC_FIN) 'DDMMAAAA
+      sNivValida = "1" 'Valor fijo
+
+      //REGISTRO EN ESTRUCTURA TEMPORAL
+      SGB_M4C_TEMP_MANA_PROP.AddRegister()
+      SGB_M4C_TEMP_MANA_PROP.PROP_ID_ARCHIVO      =sIDArchivo
+      SGB_M4C_TEMP_MANA_PROP.PROP_TIPO_MOV        =sTipoMov
+      SGB_M4C_TEMP_MANA_PROP.PROP_ID_EMPLEADO     =sIDEmpleado
+      SGB_M4C_TEMP_MANA_PROP.PROP_TIPO_RESP       =sTipoResp
+      SGB_M4C_TEMP_MANA_PROP.PROP_ID_MANAGER      =sIDMana
+      SGB_M4C_TEMP_MANA_PROP.PROP_FECHA_INI       =sFechaIni
+      SGB_M4C_TEMP_MANA_PROP.PROP_FECHA_FIN       =sFechaFin
+      SGB_M4C_TEMP_MANA_PROP.PROP_NIV_VALIDACION  =sNivValida
+    Next
+
+    //SE REALIZA LA REVISION DE LOS REGISTROS TEMPORALES
+    SGB_M4C_COMPARA_MANA()
+
+    //Fin modificación PPS 03/12/2018
+    SGB_M4C_REG_BIT_ARC(sIDArchivo, iGenerado)
+  Else
+    'No fue posible generar el registro en la tabla archivo
+    SetLog(M4_ERRORLOG, 60, 4, 400, "No fue posible registrar el archivo " + sIDArchivo + " en el Envío " + sIDEnvio + " " + ToString(TodayNow(), 0))
+  EndIf
+
+Else
+  'No fue posible generar el registro en la tabla archivo
+  SetLog(M4_ERRORLOG, 60, 4, 400, "No fue posible generar el registro en la tabla archivo " + ToString(TodayNow(), 0))
+EndIf

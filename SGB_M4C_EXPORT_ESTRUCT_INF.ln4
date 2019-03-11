@@ -1,0 +1,38 @@
+''Pizano Pe¿a Samantha - Noviembre 2018
+'SGB_M4C_EXPORT_ESTRUCT_INF(sIDFileEstructInf, sRuta, sSeparadorInf)
+'El m¿todo exporta el archivo de Colaboradores a partir de los registros de la tabla.
+
+sIDArchivo = SGB_ARG_ID_ARCHIVO
+sRuta = SGB_ARG_RUTA
+sSeparador = SGB_ARG_SEPARADOR
+sArchivo = sRuta + sIDArchivo + ".txt"
+iPorEnviar = 2
+
+SGB_M4C_REG_ESTR_INF.DESTROYBLOCK()
+sSql = "FROM &SGB_INF_REG_ESTR A "
+sSql = sSql + "WHERE A.ID_ARCHIVO = '" + sIDArchivo + "' "
+sSql = sSql + "ORDER BY A.ID_REGISTRO ASC "
+SGB_M4C_REG_ESTR_INF.SGB_PR_FILTRO_SELECT = sSql
+SGB_M4C_REG_ESTR_INF.Load_Blk()
+
+iRegSGB_M4C_REG_ESTR_INF = SGB_M4C_REG_ESTR_INF.Count()
+SetLog(M4_DEBUGINFOLOG, 60, 4, 400, "No. de Registros de Estructura Infoblock " + ToString(iRegSGB_M4C_REG_ESTR_INF, 0) + " " + ToString(TodayNow(), 0))
+For i = 0 To iRegSGB_M4C_REG_ESTR_INF - 1
+  SGB_M4C_REG_ESTR_INF.MoveTo(i)
+
+  sText = ""
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_ESTR_INF.USUARIO, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_ESTR_INF.ID, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_ESTR_INF.PARENTID, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_ESTR_INF.NAME, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_ESTR_INF.VISITABLE, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_ESTR_INF.INTERNAL, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_ESTR_INF.CRC, "")
+
+  ConcatFile(sArchivo, sText, M4_TRUE, M4_ENCODING_UTF8)
+Next
+
+SetLog(M4_DEBUGINFOLOG, 60, 4, 400, "Archivo de Estructura Infoblock generado " + ToString(TodayNow(), 0))
+
+'Registrando el archivo en la Bit¿cora
+SGB_M4C_REG_BIT_ARC(sIDArchivo, iPorEnviar)

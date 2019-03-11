@@ -1,0 +1,37 @@
+'SGB_M4C_EXPORT_MANA(sIDFileMana, sPath, sSeparator)
+'El m¿todo exporta el archivo de Colaboradores a partir de los registros de la tabla.
+
+sIDArchivo = SGB_ARG_ID_ARCHIVO
+sRuta = SGB_ARG_RUTA
+sSeparador = SGB_ARG_SEPARADOR
+sArchivo = sRuta + sIDArchivo + ".txt"
+iPorEnviar = 2
+
+SGB_M4C_REG_MANA.DESTROYBLOCK()
+sSql = "FROM &SGB_M4C_REG_MANA A "
+sSql = sSql + "WHERE A.ID_ARCHIVO = '" + sIDArchivo + "' "
+sSql = sSql + "ORDER BY A.ID_REGISTRO ASC "
+SGB_M4C_REG_MANA.SGB_PR_FILTRO_SELECT = sSql
+SGB_M4C_REG_MANA.Load_Blk()
+
+iRegSGB_M4C_REG_MANA = SGB_M4C_REG_MANA.Count()
+SetLog(M4_DEBUGINFOLOG, 60, 4, 400, "No. de Registros de Managers " + ToString(iRegSGB_M4C_REG_MANA, 0) + " " + ToString(TodayNow(), 0))
+For i = 0 To iRegSGB_M4C_REG_MANA - 1
+  SGB_M4C_REG_MANA.MoveTo(i)
+
+  sText = ""
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_MANA.TIPO_MOV, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_MANA.ID_EMPLEADO, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_MANA.TIPO_RESP, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_MANA.ID_MANAGER, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_MANA.FECHA_INI, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_MANA.FECHA_FIN, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_MANA.NIV_VALIDACION, "") + sSeparador
+
+  ConcatFile(sArchivo, sText, M4_TRUE, M4_ENCODING_UTF8)
+Next
+
+SetLog(M4_DEBUGINFOLOG, 60, 4, 400, "Archivo de Managers generado " + ToString(TodayNow(), 0))
+
+'Registrando el archivo en la Bit¿cora
+SGB_M4C_REG_BIT_ARC(sIDArchivo, iPorEnviar)

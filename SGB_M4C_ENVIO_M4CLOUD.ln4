@@ -1,0 +1,147 @@
+'SGB_GBS_ENVIO_M4CLOUD(SRGB_ARG_ID_ENVIO)
+'El m¿todo se ejecuta desde el planificador de tareas y genera los archivos correspondientes al Env¿o pasado por par¿metro.
+SetLog(M4_DEBUGINFOLOG,60,4,400,"Comienzo " + ToString(TodayNow(),0))
+
+'Obteniendo la ruta del archivo
+'SAV_PARAMS!SAV_PARAMS.RET_VALUE("CONFIGURATION","M4C","FILES_PATH")
+'sRuta = SAV_PARAMS!FINAL_RETURN[0].APP_VALUE
+sRuta = "/opt/meta4/m4cloud/"
+'sRuta = "C:\Users\adrian.gallardo\Documents\M4C\"
+sSeparador = "|"
+sSeparadorMana = ";"
+iIDEnvio = 0
+iEnEspera = 1
+iEnProceso = 2
+iEdoEnvioAnterior = 0
+iIntentos = SGB_ARG_INTENTOS
+
+'Recuperando el ID del último Envío registrado
+SGB_M4C_ULT_ENVIO.DESTROYBLOCK()
+SGB_M4C_ULT_ENVIO.Load_Blk()
+
+iRegSGB_M4C_ULT_ENVIO = SGB_M4C_ULT_ENVIO.Count()
+If iRegSGB_M4C_ULT_ENVIO > 0 Then 'Verificando el último estado del Envío
+  SGB_M4C_ULT_ENVIO.Begin()
+  iIDEnvioAnt = SGB_M4C_ULT_ENVIO.ID_ENVIO
+  iEnProceso = 2
+  iExitoso = 3
+  iError = 4
+
+  SGB_M4C_ENVIO_PEND.DESTROYBLOCK()
+  SGB_M4C_ENVIO_PEND.SGB_PR_ID_ENVIO = iIDEnvioAnt 'Se valida el estado del Envio anterior
+  SGB_M4C_ENVIO_PEND.Load_Blk()
+
+  iRegSGB_M4C_ENVIO_PEND = SGB_M4C_ENVIO_PEND.Count()
+  If iRegSGB_M4C_ENVIO_PEND > 0 Then
+    SGB_M4C_ENVIO_PEND.Begin()' La tabla esta ordenada de forma descendente por ID Estado.
+    iEdoEnvioAnterior = SGB_M4C_ENVIO_PEND.ID_ESTADO
+  EndIf
+
+'  If iEdoEnvioAnterior = iEnProceso Then
+'    'Existen Envios que se est¿n ejecutando actualmente, es necesario esperar a que finalicen para ejecutar el Reenv¿o
+'    SetLog(M4_DEBUGINFOLOG,60,4,400,"Existen Envios que se estan ejecutando actualmente, es necesario esperar a que finalicen para ejecutar un Envio nuevo " + ToString(TodayNow(),0))
+'    'El último Énvío continua en proceso, se enviará nuevamente la tarea a planificar en 15 mins.
+'    'Si la tarea presenta nuevamente un estado de espera, se detendrá y se registrará el error en la traza.
+'    'Planificando el siguiente envio
+'    'El Envio anterior aun continua EN PROCESO. Se han realizado dos intentos de ejecucion de la interfaz, pero esta no puede ejecutarse hasta que termine el Envio anterior. Se detendra la ejecucion de la Interfaz.
+'    SetLog(M4_DEBUGINFOLOG,60,4,400,"El Envio anterior aun continua EN PROCESO. Se planificara una nueva ejecucion de la Interfaz esperando a que finalice el Envio actual. " + ToString(TodayNow(),0))
+''    iIntentos = iIntentos + 1
+'
+'    'No se toman en cuenta el número de intentos para planificar una nueva ejecución
+''    If iIntentos < 2 Then
+'      sProcessName = "ENVIO M4CLOUD"
+'
+'      dHoy = ToDayNow()
+'      dProgramada = DateAdd(dHoy, 15, M4_MINUTE)
+'      dProgramada = DateAdd(dProgramada, 6, M4_HOUR) 'El servidor tiene una diferencia de 6 hrs.
+'      sTimeRule = "DATE$" + ToString(dProgramada)
+'
+'      SetLog(M4_DEBUGINFOLOG,60,4,400,"Fecha Hora de la siguiente ejecucion " + ToString(dProgramada))
+'
+'      sIDItem = "SGB_M4C_ENVIO_M4CLOUD"
+'      SGB_M4C_PLANIF_TASK(sProcessName, sTimeRule, sIDItem, iIntentos)
+'
+''    Else 'Si la interfaz lleva ya dos intentos de ejecucion y el envio anterior no ha concluido, la interfaz se detiene.
+''      'El Envio anterior aun continua EN PROCESO. Se han realizado dos intentos de ejecucion de la interfaz, pero esta no puede ejecutarse hasta que termine el Envio anterior. Se detendra la ejecucion de la Interfaz.
+''      SetLog(M4_DEBUGINFOLOG,60,4,400,"El Envio anterior aun continua EN PROCESO. Se han realizado dos intentos de ejecucion de la interfaz, pero esta no puede ejecutarse hasta que termine el Envio anterior. Se detendra la ejecucion de la Interfaz. " + ToString(TodayNow(),0))
+''    EndIf
+
+  If iEdoEnvioAnterior = iError Then
+    'El ultimo Envio finalizo con un estado de ERROR. Favor de revisar la aplicacion.
+    SetLog(M4_DEBUGINFOLOG,60,4,400,"El ultimo Envio finalizo con un estado de ERROR. Favor de revisar la aplicacion. " + ToString(TodayNow(),0))
+
+  ElseIf iEdoEnvioAnterior = iExitoso Or iEdoEnvioAnterior = iEnProceso Then 'El Envío anterior concluyó de forma exitosa, se realiza un nuevo Envío.
+    'Registrando el Envío
+    SGB_M4C_ENVIO.AddRegister()
+    SGB_M4C_ENVIO.FECHA_HORA_INI = TodayNow()
+    SGB_M4C_ENVIO.FECHA_HORA_FIN = TodayNow()
+    SGB_M4C_ENVIO.Persist_tree()
+
+    'Recuperando el ID del Envío registrado
+    SGB_M4C_ULT_ENVIO.DESTROYBLOCK()
+    SGB_M4C_ULT_ENVIO.Load_Blk()
+
+    iRegSGB_M4C_ULT_ENVIO = SGB_M4C_ULT_ENVIO.Count()
+    If iRegSGB_M4C_ULT_ENVIO > 0 Then
+      SGB_M4C_ULT_ENVIO.Begin()
+      iIDEnvio = SGB_M4C_ULT_ENVIO.ID_ENVIO
+      iIntentos = 0
+
+      'Registrando el estado del env¿o en la Bit¿cora
+      SGB_M4C_REG_BIT_ENV(iIDEnvio, iEnEspera)
+      SGB_M4C_REG_BIT_ENV(iIDEnvio, iEnProceso)
+
+      'Generando nombres de archivo
+      sFechaHoraNombre = SGB_M4C_CALC_NOMBRE()
+      sIDFileColabs = "M4C_COLABS_PN_" + sFechaHoraNombre
+      sIDFileManager = "M4C_MANAGER_PN_" + sFechaHoraNombre
+      sIDFileControl = "M4C_CONTROL_PN_" + sFechaHoraNombre
+      sIDFileEstructInf = "INF_ESTRUCTURA_PN_" + sFechaHoraNombre
+      sIDFileColaInf = "INF_COLABS_PN_" + sFechaHoraNombre
+
+      'Generando el archivo de Colaboradores
+      SetLog(M4_DEBUGINFOLOG,60,4,400,"Almacenando los registros de Colaboradores " + ToString(TodayNow(),0))
+      SGB_M4C_REG_COLA(sIDFileColabs, iIDEnvio, sIDFileColaInf)
+      SetLog(M4_DEBUGINFOLOG,60,4,400,"Generando el archivo de Colaboradores " + ToString(TodayNow(),0))
+      SGB_M4C_EXPORT_COLA(sIDFileColabs, sRuta, sSeparador)
+
+      'Generando el archivo de Manager
+      SetLog(M4_DEBUGINFOLOG,60,4,400,"Almacenando los registros de Manager " + ToString(TodayNow(),0))
+      SGB_M4C_REG_MANA(sIDFileManager, iIDEnvio)
+      SetLog(M4_DEBUGINFOLOG,60,4,400,"Generando el archivo de Manager " + ToString(TodayNow(),0))
+      SGB_M4C_EXPORT_MANA(sIDFileManager, sRuta, sSeparadorMana)
+
+      'Los registros de los colaboradores se almacenan al insertar los datos del archivo M4Cloud base
+      SetLog(M4_DEBUGINFOLOG,60,4,400,"Generando el archivo de Colaboradores Infoblock " + ToString(TodayNow(),0))
+      SGB_M4C_EXPORT_COLA_INF(sIDFileColaInf, sRuta, sSeparador)
+
+      'Generando los archivos de Infoblock
+'      SetLog(M4_DEBUGINFOLOG,60,4,400,"Almacenando los registros de Estructura Infoblock " + ToString(TodayNow(),0))
+'      SGB_M4C_REG_ESTRUCT_INF(sIDFileEstructInf, iIDEnvio)
+'      SetLog(M4_DEBUGINFOLOG,60,4,400,"Generando el archivo de Estructura Infoblock " + ToString(TodayNow(),0))
+'      SGB_M4C_EXPORT_ESTRUCT_INF(sIDFileEstructInf, sRuta, sSeparador)
+
+      'Archivo Control
+      SetLog(M4_DEBUGINFOLOG,60,4,400,"Generando el archivo Control " + ToString(TodayNow(),0))
+      SGB_M4C_EXPORT_CONTROL(sIDFileControl, sRuta, iIDEnvio)
+
+      'Planificando el siguiente envio
+      sProcessName = "ENVIO M4CLOUD"
+
+      dHoy = ToDayNow()
+      dProgramada = DateAdd(dHoy, 15, M4_MINUTE)
+      dProgramada = DateAdd(dProgramada, 6, M4_HOUR) 'El servidor tiene una diferencia de 6 hrs.
+      sTimeRule = "DATE$" + ToString(dProgramada)
+
+      SetLog(M4_DEBUGINFOLOG,60,4,400,"Fecha Hora de la siguiente ejecucion " + ToString(dProgramada))
+
+      sIDItem = "SGB_M4C_ENVIO_M4CLOUD"
+      SGB_M4C_PLANIF_TASK(sProcessName, sTimeRule, sIDItem, iIntentos)
+
+      SetLog(M4_DEBUGINFOLOG,60,4,400,"Fin del Proceso. " + ToString(TodayNow(),0))
+
+    EndIf
+
+  EndIf
+
+EndIf

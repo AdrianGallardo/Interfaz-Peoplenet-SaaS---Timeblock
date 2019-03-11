@@ -1,0 +1,59 @@
+'Pizano Pe¿a Samantha - Noviembre 2018
+'SGB_M4C_EXPORT_COLA_INF(sIDFileColaInf, sRuta, sSeparadorInf)
+'El m¿todo exporta el archivo de Colaboradores a partir de los registros de la tabla.
+
+sIDArchivo = SGB_ARG_ID_ARCHIVO
+sRuta = SGB_ARG_RUTA
+sSeparador = SGB_ARG_SEPARADOR
+sArchivo = sRuta + sIDArchivo + ".txt"
+iPorEnviar = 2
+
+SGB_M4C_REG_COLA_INF.DESTROYBLOCK()
+sSql = "FROM &SGB_INF_REG_COLA A "
+sSql = sSql + "WHERE A.ID_ARCHIVO = '" + sIDArchivo + "' "
+sSql = sSql + "ORDER BY A.ID_REGISTRO ASC "
+SGB_M4C_REG_COLA_INF.SGB_PR_FILTRO_SELECT = sSql
+SGB_M4C_REG_COLA_INF.Load_Blk()
+
+iRegSGB_M4C_REG_COLA_INF = SGB_M4C_REG_COLA_INF.Count()
+SetLog(M4_DEBUGINFOLOG, 60, 4, 400, "No. de Registros de Colaboradores Infoblock " + ToString(iRegSGB_M4C_REG_COLA_INF, 0) + " " + ToString(TodayNow(), 0))
+For i = 0 To iRegSGB_M4C_REG_COLA_INF - 1
+  SGB_M4C_REG_COLA_INF.MoveTo(i)
+
+  sText = ""
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.USUARIO, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.ID, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.ORGANIZATIONID, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.PARENTID, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.NAME, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.PATERNALSURNAME, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.MATERNALSURNAME, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.BIRTHDATE, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.SEX, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.NIN, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.EMAIL, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.ORGANIZATION, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.DEPARTMENT, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.CATEGORY, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.POSICION, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.COSTCENTER, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.PAYROLL, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.OTHER1, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.OTHER2, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.OTHER3, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.ACTIVE, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.INTERNAL, "") + sSeparador
+  sText = sText + "0" + sSeparador ' El valor de CRC va fijo a 0. Se utiliza este campo para almacecar la bandera de A,B,C.
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.STARTDATE, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.DATE1, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.DATE2, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.NIF, "") + sSeparador
+  sText = sText + SGB_CHK_NULL(SGB_M4C_REG_COLA_INF.CRC, "")
+
+  ConcatFile(sArchivo, sText, M4_TRUE, M4_ENCODING_UTF8)
+Next
+
+SetLog(M4_DEBUGINFOLOG, 60, 4, 400, "Archivo de Colaboradores Infoblock generado " + ToString(TodayNow(), 0))
+
+'Registrando el archivo en la Bit¿cora
+SGB_M4C_REG_BIT_ARC(sIDArchivo, iPorEnviar)
