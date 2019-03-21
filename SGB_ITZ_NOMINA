@@ -1,0 +1,604 @@
+////////////////////////////////////////////////////////////////////////////////
+// 
+// Nombre: CRSP_ITZ_MOV_COLAB.SGB_ITZ_NOMINA
+// Autor: SAE-GDM
+// Fecha de Creaci?n: 11/05/12
+// Asunto: Ejecutar la l?gica de inserci?n de movimientos para la interfaz con NOMINA
+// Conector: No aplica
+// Argumentos: ARG_ID_HR = ID Colaborador del movimiento; ARG_TIPO_MOV = Tipo de movimiento a realizar
+// ARG_FECHA_PERIODO = Fecha del periodo; ARG_FECHA_ROL = Fecha del rol; ARG_CLS_MOV = Clase de movimiento;
+// ARG_ORIGEN_MOV = Origen del movimiento
+// Ejecuci?n: Es llamado por CRGB_ITZ_MOV_COLAB.SGB_ITZ_EXEC
+// Retorno: No aplica
+//
+///////////////////////////////////////////////////////////////////////////////
+
+'Variables
+sIdHr = ARG_ID_HR
+sTipoMov = ARG_TIPO_MOV
+dFechaPeriodo = ARG_FECHA_PERIODO
+dFechaRol = ARG_FECHA_ROL
+sClsMov = ARG_CLS_MOV
+dFechaMov = dFechaRol
+
+//-----Modificado SAE-GDM Octubre 2012-----//
+'Cuando se trata de cambios, y para no perder los movimientos hechos a futuro, se condiciona
+'para detectar si el cambio es de hist?ricos del Periodo o del Rol.
+If sTipoMov = "C" Then
+    If dFechaRol = M4_PLUS_INF Then
+        dFechaMov = dFechaPeriodo
+    EndIf
+    If dFechaPeriodo = M4_PLUS_INF Then
+        dFechaMov = dFechaRol
+    EndIf
+Else
+    dFechaMov = dFechaPeriodo
+EndIf
+//-----Fin modificado SAE-GDM Octubre 2012-----//
+
+'Cargaremos los datos del colaborador acorde con la fecha en que se har? el movimiento
+CRSP_ITZ_HR_DATA.DESTROYBLOCK()
+CRSP_ITZ_HR_DATA.PAR_ID_HR = sIdHr
+CRSP_ITZ_HR_DATA.PAR_FECHA_P = dFechaPeriodo
+//-----A?adido SAE-GDM Mayo 2014-----//
+CRSP_ITZ_HR_DATA.PAR_FECHA_P_SSP = dFechaPeriodo
+//-----Fin a?adido SAE-GDM Mayo 2014-----//
+CRSP_ITZ_HR_DATA.PAR_FECHA_R = dFechaRol
+CRSP_ITZ_HR_DATA.Load_Prg()
+
+If CRSP_ITZ_HR_DATA.Count() > 0 Then
+    CRSP_ITZ_HR_DATA.Begin()
+    'Iremos traspasando los datos obtenidos a la tabla de NOMINA y NOMINA_GEN
+    'Obtendremos el ordinal de los movimientos del colaborador y lo asignamos manualmente
+    sSQL = "SELECT @SGB_ORDINAL = #MAX(A.CMX_ORDINAL) FROM &CMX_NOMINA A "
+    sSQL = sSQL + "WHERE (A.STD_ID_HR = '" + sIdHr + "')"
+    
+    SRGB_ITZ_NOMINA.DESTROYBLOCK()
+    SRGB_ITZ_NOMINA.EXECUTESQL = sSQL
+    bSQLLogico = SRGB_ITZ_NOMINA.EXECUTESQL(0)
+    nOrdinal = 1
+    If bSQLLogico <> M4_ERROR Then
+        SRGB_ITZ_NOMINA.Begin()
+        nOrdinal = SRGB_ITZ_NOMINA.SGB_ORDINAL + 1
+        SRGB_ITZ_NOMINA.DESTROYBLOCK()
+    EndIf
+    
+    //-----Agregado SAE-GDM Febrero 2013-----//
+    'Cuando viene un tipo de movimiento A, se debe validar si es un posible reingreso o transferencia
+    'Se condicionar? al c?digo del motivo de inicio para cambiar esa A por R
+    sMotivoInicio = CRSP_ITZ_HR_DATA.STD_ID_HRP_START_REASON
+    If sTipoMov = "A" And (sMotivoInicio = "005" Or sMotivoInicio = "004") Then sTipoMov = "R"
+    //-----Fin agregado SAE-GDM Febrero 2013-----//
+
+    'Empezamos con los de NOMINA
+    SRGB_ITZ_NOMINA.AddRegister()
+    
+    SRGB_ITZ_NOMINA.CMX_ORDINAL = nOrdinal
+    
+    'Datos personales
+    //-----Modificado SAE-GDM Abril 2014-----//
+    'SRGB_ITZ_NOMINA.SSP_PRIMER_APELLIDO = CRSP_ITZ_HR_DATA.STD_N_FAMILY_NAME_1
+    SRGB_ITZ_NOMINA.SSP_PRIMER_APELLIDO = CRSP_ITZ_HR_DATA.SSP_PRIMER_APELLIDO
+    //-----Fin modificado SAE-GDM Abril 2014-----//
+    SRGB_ITZ_NOMINA.STD_N_MAIDEN_NAME = CRSP_ITZ_HR_DATA.STD_N_MAIDEN_NAME
+    SRGB_ITZ_NOMINA.STD_N_FIRST_NAME = CRSP_ITZ_HR_DATA.STD_N_FIRST_NAME
+    SRGB_ITZ_NOMINA.STD_ID_GENDER = CRSP_ITZ_HR_DATA.STD_ID_GENDER
+    If SRGB_ITZ_HR_BANK_DATA.Count() > 0 Then
+        SRGB_ITZ_HR_BANK_DATA.Begin()
+        SRGB_ITZ_NOMINA.SCO_ID_BANK_CODE = SRGB_ITZ_HR_BANK_DATA.STD_ID_EXT_HOLDING
+        SRGB_ITZ_NOMINA.SCO_ACCOUNT_NUMBER = SRGB_ITZ_HR_BANK_DATA.SCO_ACCOUNT_NUMBER
+    EndIf
+    
+    'Estos datos dependen del pa?s
+    //-----Modificado SAE-GDM Abril 2014-----//
+    'SRGB_ITZ_NOMINA.SSP_NUM_SS = CRSP_ITZ_HR_DATA.STD_SS_NUMBER
+    SRGB_ITZ_NOMINA.SSP_NUM_SS = CRSP_ITZ_HR_DATA.SSP_PROV_NUM_SS + CRSP_ITZ_HR_DATA.SSP_NUM_SS + CRSP_ITZ_HR_DATA.SSP_DIG_NUM_SS
+    //-----Fin modificado SAE-GDM Abril 2014-----//
+    SRGB_ITZ_NOMINA.SSP_NUM_DOC = CRSP_ITZ_HR_DATA.STD_SSN
+    
+    'Datos de periodo
+    SRGB_ITZ_NOMINA.STD_ID_HR = CRSP_ITZ_HR_DATA.STD_ID_PERSON
+    SRGB_ITZ_NOMINA.STD_OR_HR_PERIOD = CRSP_ITZ_HR_DATA.STD_OR_HR_PERIOD
+    SRGB_ITZ_NOMINA.STD_DT_START = CRSP_ITZ_HR_DATA.STD_DT_START
+    SRGB_ITZ_NOMINA.SSP_FEC_ANTIGUEDAD = Mid(ToString(CRSP_ITZ_HR_DATA.SSP_FEC_ANTIGUEDAD,0),0,10)
+    If CRSP_ITZ_HR_DATA.CMX_ID_TP_PUES = "01" Then
+        SRGB_ITZ_NOMINA.CMX_FORMA_DE_PAGO = "S"
+    ElseIf CRSP_ITZ_HR_DATA.CMX_ID_TP_PUES = "02" Then 
+        SRGB_ITZ_NOMINA.CMX_FORMA_DE_PAGO = "Q"
+    EndIf
+    If SRGB_ITZ_ORGANIZATION.Count() > 0 Then
+        SRGB_ITZ_ORGANIZATION.Begin()
+        SRGB_ITZ_NOMINA.CMX_ID_ORGANIZAC = SRGB_ITZ_ORGANIZATION.STD_ID_WL_PARENT
+    EndIf
+    SRGB_ITZ_NOMINA.STD_ID_HRP_END_REASON = CRSP_ITZ_HR_DATA.STD_ID_HRP_END_REASON
+    SRGB_ITZ_NOMINA.SCO_ID_LEG_ENT = CRSP_ITZ_HR_DATA.SCO_ID_LEG_ENT       
+    'Depende del pa?s
+    SRGB_ITZ_NOMINA.SSP_ID_CONT_INTERN = ""
+    
+    'Datos de rol
+    SRGB_ITZ_NOMINA.SCO_ID_JOB_CODE = CRSP_ITZ_HR_DATA.SCO_ID_JOB_CODE
+    'Para obtener el Lugar de Trabajo se debe obtener el padre del Centro de Trabajo
+    If SRGB_ITZ_WORK_LOC.Count() > 0 Then
+        SRGB_ITZ_WORK_LOC.Begin()
+        SRGB_ITZ_NOMINA.SCO_ID_WORK_LOCATION = SRGB_ITZ_WORK_LOC.STD_ID_WL_PARENT
+    EndIf
+    SRGB_ITZ_NOMINA.SCO_VALUE = CRSP_ITZ_HR_DATA.SCO_VALUE
+    SRGB_ITZ_NOMINA.CMX_ID_NIVEL = CRSP_ITZ_HR_DATA.STD_ID_JOB_INT_CLAS
+    
+    'Depende del pa?s
+    //-----Modificado SAE-GDM Abril 2014-----//
+'    If CRGB_ITZ_HR_CC.Count() > 0 Then
+'        CRGB_ITZ_HR_CC.Begin()
+'        SRGB_ITZ_NOMINA.SSP_ID_CENT_COSTO = CRGB_ITZ_HR_CC.SSP_ID_CENT_COSTO
+'    EndIf
+    If CRSP_ITZ_HR_CC.Count() > 0 Then
+        CRSP_ITZ_HR_CC.Begin()
+        SRGB_ITZ_NOMINA.SSP_ID_CENT_COSTO = CRSP_ITZ_HR_CC.SSP_ID_CENT_COSTO
+    EndIf
+    //-----Fin modificado SAE-GDM Abril 2014-----//
+    
+    SRGB_ITZ_NOMINA.CMX_ALIAS_NOMINA = CRSP_ITZ_HR_DATA.SCO_ID_WORK_LOCATION
+    SRGB_ITZ_NOMINA.STD_ID_HR_ANT = ""
+    
+    'Datos extras
+    SRGB_ITZ_NOMINA.CMX_TP_MOVIMIENTO = sTipoMov
+    SRGB_ITZ_NOMINA.CMX_DATE = dFechaMov
+    'Inicio FRMEDINA Octubre 2018
+    'Para el tipo TRADES tendr? valor "T"
+    If CRSP_ITZ_HR_DATA.STD_ID_HR_TYPE = "08" Then
+        SRGB_ITZ_NOMINA.CMX_PROCESADO = "T"
+    Else
+        SRGB_ITZ_NOMINA.CMX_PROCESADO = "0"
+    EndIf
+    'Fin FRMEDINA Octubre 2018
+    
+    SRGB_ITZ_NOMINA.CMX_CLS_MOVIMIENTO = sClsMov
+    
+    'Ahora con los de NOMINA_GEN que no est?n unidos al conector con NOMINA
+    CRSP_ITZ_NOMINA_GEN.AddRegister()
+    
+    'Datos personales
+    'Correo
+    If SRGB_ITZ_HR_MAIL.Count() > 0 Then
+        SRGB_ITZ_HR_MAIL.Begin()
+        CRSP_ITZ_NOMINA_GEN.CMX_EMAIL = SRGB_ITZ_HR_MAIL.STD_EMAIL
+    EndIf
+    'Estado Civil
+    If SRGB_ITZ_HR_MAR_STAT.Count() > 0 Then
+        SRGB_ITZ_HR_MAR_STAT.Begin()
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_MAR_STAT = SRGB_ITZ_HR_MAR_STAT.STD_ID_MARITAL_STAT
+    EndIf
+    'Fecha de nacimiento
+    CRSP_ITZ_NOMINA_GEN.CMX_DT_BIRTH = CRSP_ITZ_HR_DATA.STD_DT_BIRTH
+    'Pa?s de nacimiento
+    'SRGB_ITZ_NOMINA_GEN.CMX_ID_COUNTRY = SRGB_ITZ_HR_DATA.STD_ID_COUNTRY
+    'N?mina no usa el mismo cat?logo, usaremos el grupo pa?s para las claves necesarias
+    //-----Modificado SAE-GDM Mayo 2014-----//
+    'CRSP_ITZ_NOMINA_GEN.CMX_ID_COUNTRY = CRSP_ITZ_HR_DATA.STD_ID_COUNT_GROUP
+    'Espa?a maneja otros valores
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_COUNTRY = CRSP_ITZ_HR_DATA.SSP_ID_NACION_SS_NAC
+    //-----Fin modificado SAE-GDM Mayo 2014-----//
+    'Nacionalidad y documentos de trabajo en el extranjero
+    If SRGB_ITZ_HR_NATIONALITY.Count() > 0 Then
+        SRGB_ITZ_HR_NATIONALITY.Begin()
+        'SRGB_ITZ_NOMINA_GEN.CMX_ID_NACIONALITY = SRGB_ITZ_HR_NATIONALITY.STD_ID_COUNTRY
+        'N?mina no usa el mismo cat?logo, usaremos el grupo pa?s para las claves necesarias
+        //-----Modificado SAE-GDM Mayo 2014-----//
+        'CRSP_ITZ_NOMINA_GEN.CMX_ID_NACIONALITY = SRGB_ITZ_HR_NATIONALITY.STD_ID_COUNT_GROUP
+        'Espa?a maneja otros valores
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_NACIONALITY = CRSP_ITZ_HR_NATIONALITY.SSP_ID_NACION_SS
+        //-----Fin modificado SAE-GDM Mayo 2014-----//
+        CRSP_ITZ_NOMINA_GEN.CMX_DOC_LEGAL = SRGB_ITZ_HR_NATIONALITY.CMX_DOC_LEGAL
+        CRSP_ITZ_NOMINA_GEN.CMX_FECHA_DOCLEG = SRGB_ITZ_HR_NATIONALITY.CMX_FECHA_DOCLEG
+        CRSP_ITZ_NOMINA_GEN.CMX_VENC_DOCLEG = SRGB_ITZ_HR_NATIONALITY.CMX_VENC_DOCLEG
+        CRSP_ITZ_NOMINA_GEN.CMX_INTRODUCCION = SRGB_ITZ_HR_NATIONALITY.CMX_INTRODUCCION
+        CRSP_ITZ_NOMINA_GEN.CMX_NATURAL = SRGB_ITZ_HR_NATIONALITY.CMX_NATURAL
+        CRSP_ITZ_NOMINA_GEN.CMX_PASSPORT_NB = SRGB_ITZ_HR_NATIONALITY.STD_PASSPORT_NB
+    Else
+        'Si no tiene datos de nacionalidad, se tomar? el pa?s de nacimiento
+        'SRGB_ITZ_NOMINA_GEN.CMX_ID_NACIONALITY = SRGB_ITZ_HR_DATA.STD_ID_COUNTRY
+        'N?mina no usa el mismo cat?logo, usaremos el grupo pa?s para las claves necesarias
+        //-----Modificado SAE-GDM Mayo 2014-----//
+        'CRSP_ITZ_NOMINA_GEN.CMX_ID_NACIONALITY = CRSP_ITZ_HR_DATA.STD_ID_COUNT_GROUP
+        'Espa?a maneja otros valores
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_NACIONALITY  = CRSP_ITZ_HR_DATA.SSP_ID_NACION_SS_NAC
+        //-----Fin modificado SAE-GDM Mayo 2014-----//
+    EndIf
+    'M?s datos geogr?ficos de nacimiento
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_GEO_DIV = CRSP_ITZ_HR_DATA.STD_ID_GEO_DIV
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_SUB_GEO_DIV = CRSP_ITZ_HR_DATA.STD_ID_SUB_GEO_DIV
+    CRSP_ITZ_NOMINA_GEN.CMX_N_SUB_GEO_DIV = CRSP_ITZ_HR_DATA.STD_N_SUB_GEO_DIV
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_GEO_PLACE = CRSP_ITZ_HR_DATA.STD_ID_GEO_PLACE
+    CRSP_ITZ_NOMINA_GEN.CMX_N_GEO_PLACE = CRSP_ITZ_HR_DATA.STD_N_GEO_PLACE
+    // ----- Inicio FRMEDINA Noviembre 2018 -----//
+    'Para la interfaz con M4C se tomar?n los siguientes campos
+    CRSP_ITZ_NOMINA_GEN.SSP_ID_GEO_DIV = CRSP_ITZ_HR_DATA.STD_ID_GEO_DIV
+    CRSP_ITZ_NOMINA_GEN.SSP_ID_SUB_GEO_DIV = CRSP_ITZ_HR_DATA.STD_ID_SUB_GEO_DIV
+    // ----- Fin FRMEDINA Noviembre-----//
+    'Direcci?n de residencia
+    If SRGB_ITZ_HR_ADDRESS.Count() > 0 Then
+        SRGB_ITZ_HR_ADDRESS.Begin()
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_SIGLA_DOMIC = SRGB_ITZ_HR_ADDRESS.SSP_ID_SIGLA_DOMIC
+        CRSP_ITZ_NOMINA_GEN.CMX_ADDRESS_LINE_1 = SRGB_ITZ_HR_ADDRESS.STD_ADDRESS_LINE_1
+        CRSP_ITZ_NOMINA_GEN.CMX_ADDRESS_LINE_2 = SRGB_ITZ_HR_ADDRESS.STD_ADDRESS_LINE_2
+        CRSP_ITZ_NOMINA_GEN.SGB_ADDRESS_LINE_3 = SRGB_ITZ_HR_ADDRESS.STD_ADDRESS_LINE_3
+        CRSP_ITZ_NOMINA_GEN.SGB_ADDRESS_LINE_4 = SRGB_ITZ_HR_ADDRESS.STD_ADDRESS_LINE_4
+        CRSP_ITZ_NOMINA_GEN.CMX_NUM_VIA = SRGB_ITZ_HR_ADDRESS.SSP_NUM_VIA
+        CRSP_ITZ_NOMINA_GEN.CMX_DISTRIT_POSTAL = SRGB_ITZ_HR_ADDRESS.STD_ZIP_CODE
+        'SRGB_ITZ_NOMINA_GEN.CMX_ID_COUNTRY_ADD = SRGB_ITZ_HR_ADDRESS.STD_ID_COUNTRY
+        'N?mina no usa el mismo cat?logo, usaremos el grupo pa?s para las claves necesarias
+        //-----Modificado SAE-GDM Mayo 2014-----//
+        'CRSP_ITZ_NOMINA_GEN.CMX_ID_COUNTRY_ADD = SRGB_ITZ_HR_ADDRESS.STD_ID_COUNT_GROUP
+        'Espa?a maneja otros valores
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_COUNTRY_ADD = CRSP_ITZ_HR_ADDRESS.SSP_ID_NACION_SS
+        //-----Fin modificado SAE-GDM Mayo 2014-----//
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_GEO_DIV_ADD = SRGB_ITZ_HR_ADDRESS.STD_ID_GEO_DIV
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_SUB_GEO_DIV_ADD = CRSP_ITZ_HR_ADDRESS.STD_ID_SUB_GEO_DIV
+        CRSP_ITZ_NOMINA_GEN.CMX_N_SUB_DIV_ADD = SRGB_ITZ_HR_ADDRESS.STD_N_SUB_GEO_DIV
+        'CRSP_ITZ_NOMINA_GEN.CMX_N_GEO_DIV = SRGB_ITZ_HR_ADDRESS.STD_N_GEO_DIV
+        CRSP_ITZ_NOMINA_GEN.CMX_N_GEO_PLACE_ADD = SRGB_ITZ_HR_ADDRESS.STD_N_GEO_PLACE
+        //-----A?adido SAE-GDM Abril 2014-----//
+        CRSP_ITZ_NOMINA_GEN.SSP_PISO = SRGB_ITZ_HR_ADDRESS.SSP_PISO
+        CRSP_ITZ_NOMINA_GEN.SSP_PUERTA = SRGB_ITZ_HR_ADDRESS.SSP_PUERTA
+        CRSP_ITZ_NOMINA_GEN.SSP_ESCALERA = SRGB_ITZ_HR_ADDRESS.SSP_ESCALERA
+        CRSP_ITZ_NOMINA_GEN.SSP_BLOQUE = SRGB_ITZ_HR_ADDRESS.SSP_BLOQUE
+        //-----Fin a?adido SAE-GDM Abril 2014-----//
+    EndIf
+    'Tel?fono
+    If SRGB_ITZ_HR_PHONE.Count() > 0 Then
+        SRGB_ITZ_HR_PHONE.Begin()
+        CRSP_ITZ_NOMINA_GEN.CMX_PHONE = SRGB_ITZ_HR_PHONE.STD_PHONE
+    EndIf
+    'Documentos legales seg?n el pa?s
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_TP_DOC = CRSP_ITZ_HR_DATA.SSP_ID_TP_DOC
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_TP_DOC1 = ""
+    CRSP_ITZ_NOMINA_GEN.SSP_NUM_DOC1 = ""
+    //-----A?adido SAE-GDM Mayo 2014-----//
+    CRSP_ITZ_NOMINA_GEN.SSP_ID_PAIS_EMISOR = CRSP_ITZ_HR_DATA.SSP_ID_NACION_SS_EMI
+    //-----Fin a?adido SAE-GDM Mayo 2014-----//
+    //-----A?adido FRMEDINA Agosto 2018-----//
+    CRSP_ITZ_NOMINA_GEN.SSP_CON_NUM_SS = CRSP_ITZ_HR_DATA.SSP_CON_NUM_SS
+    //-----Fin A?adido FRMEDINA Agosto 2018-----//
+    'Datos extra de familiares
+    SRGB_ITZ_HR_FAMILY.SGB_FAMILY_COUNT("1")
+    CRSP_ITZ_NOMINA_GEN.CMX_DEP_CONYUGE = SRGB_ITZ_HR_FAMILY.STD_ID_HR
+    SRGB_ITZ_HR_FAMILY.SGB_FAMILY_COUNT("2")
+    CRSP_ITZ_NOMINA_GEN.CMX_DEP_HIJO = SRGB_ITZ_HR_FAMILY.STD_ID_HR
+    SRGB_ITZ_HR_FAMILY.SGB_FAMILY_COUNT("3")
+    CRSP_ITZ_NOMINA_GEN.CMX_DEP_PADRES = SRGB_ITZ_HR_FAMILY.STD_ID_HR
+    SRGB_ITZ_HR_FAMILY.SGB_FAMILY_COUNT("5")
+    CRSP_ITZ_NOMINA_GEN.CMX_DEP_ABUELOS = SRGB_ITZ_HR_FAMILY.STD_ID_HR
+    SRGB_ITZ_HR_FAMILY.SGB_FAMILY_COUNT("6")
+    CRSP_ITZ_NOMINA_GEN.CMX_DEP_NIETOS = SRGB_ITZ_HR_FAMILY.STD_ID_HR
+    CRSP_ITZ_NOMINA_GEN.CMX_NOMBRE_PADRE = ""
+    CRSP_ITZ_NOMINA_GEN.CMX_NOMBRE_MADRE = ""
+    'Datos de c?nyuge
+    If CRSP_ITZ_HR_SPOUSE.Count() > 0 Then
+        CRSP_ITZ_HR_SPOUSE.Begin()
+        CRSP_ITZ_NOMINA_GEN.SSP_NIF_CONYUGE = CRSP_ITZ_HR_SPOUSE.SSP_SSN_SPOUSE
+    EndIf
+    'Datos bancarios
+    If SRGB_ITZ_HR_BANK_DATA.Count() > 0 Then
+        SRGB_ITZ_HR_BANK_DATA.Begin()
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_BANKTYPE = SRGB_ITZ_HR_BANK_DATA.SCO_ID_BANKTYPE
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_BANK_BRANCH = SRGB_ITZ_HR_BANK_DATA.SCO_ID_BANK_BRANCH
+        //----A?adido SAE-GDM Abril 2014-----//
+        CRSP_ITZ_NOMINA_GEN.SSP_DC = SRGB_ITZ_HR_BANK_DATA.SSP_DC
+        sSucursal = CRSP_ITZ_NOMINA_GEN.CMX_ID_BANK_BRANCH
+        nLongSucursal = Length(Trim(sSucursal,M4_TRIM_ALL))
+        If nLongSucursal > 0 Then
+            CRSP_ITZ_NOMINA_GEN.SSP_ID_ENTIDAD = Mid(sSucursal,0,nLongSucursal/2)
+            CRSP_ITZ_NOMINA_GEN.SSP_ID_OFICINA = Mid(sSucursal,nLongSucursal/2,nLongSucursal/2)
+        EndIf
+        //-----Fin a?adido SAE-GDM Abril 2014-----//
+        //-----A?adido SAE-GDM Noviembre 2014-----//
+        CRSP_ITZ_NOMINA_GEN.SGB_IBAN_COUNTRY = SRGB_ITZ_HR_BANK_DATA.SCO_IBAN_CODE
+        CRSP_ITZ_NOMINA_GEN.SGB_IBAN = SRGB_ITZ_HR_BANK_DATA.SCO_GB_IBAN
+        CRSP_ITZ_NOMINA_GEN.SGB_BIC = SRGB_ITZ_HR_BANK_DATA.SCO_SWIFT_ADDRESS
+        //-----Fin a?adido SAE-GDM Noviembre 2014-----//
+    EndIf
+    
+    'Datos de periodo
+    //-----A?adido SAE-GDM Mayo 2014-----//
+    CRSP_ITZ_NOMINA_GEN.SME_ID_HR_STATUS = CRSP_ITZ_HR_DATA.SME_ID_HR_STATUS
+    CRSP_ITZ_NOMINA_GEN.SSP_ID_HRP_MOT_BAJA_SS = CRSP_ITZ_HR_DATA.SSP_ID_HRP_MOT_BAJA_SS
+    CRSP_ITZ_NOMINA_GEN.SSP_ID_CAUSA_DESEM = CRSP_ITZ_HR_DATA.SSP_ID_CAUSA_DESEM
+    CRSP_ITZ_NOMINA_GEN.SSP_NUM_PLURIEMPL = CRSP_ITZ_HR_DATA.SSP_NUM_PLURIEMPL
+    If CRSP_ITZ_HR_DATA.SSP_CHK_IRPF_MOVILIDAD = 1 Then
+        CRSP_ITZ_NOMINA_GEN.SSP_CHK_IRPF_MOVILIDAD = "S"
+    Else
+        CRSP_ITZ_NOMINA_GEN.SSP_CHK_IRPF_MOVILIDAD = "N"
+    EndIf
+    If CRSP_ITZ_HR_DATA.SSP_CHK_IRPF_PROLONG = 1 Then
+        CRSP_ITZ_NOMINA_GEN.SSP_CHK_IRPF_PROLONG = "S"
+    Else
+        CRSP_ITZ_NOMINA_GEN.SSP_CHK_IRPF_PROLONG = "N"
+    EndIf
+    CRSP_ITZ_NOMINA_GEN.SSP_BRUTO_ANUAL = CRSP_ITZ_HR_DATA.SSP_VALUE
+    CRSP_ITZ_NOMINA_GEN.SSP_FEC_EXTRAS = CRSP_ITZ_HR_DATA.SSP_FEC_EXTRAS
+    //-----Fin a?adido SAE-GDM Mayo 2014-----//
+    //-----Inicio FRMEDINA Agosto 2018-----//
+    CRSP_ITZ_NOMINA_GEN.SSP_FEC_FIN_VACAC = CRSP_ITZ_HR_DATA.SSP_FEC_FIN_VACAC
+    CRSP_ITZ_NOMINA_GEN.STD_ID_HRP_START_REASON = CRSP_ITZ_HR_DATA.STD_ID_HRP_START_REASON
+    CRSP_ITZ_NOMINA_GEN.STD_ID_HR_TYPE = CRSP_ITZ_HR_DATA.STD_ID_HR_TYPE
+    //-----Fin FRMEDINA Agosto 2018-----//
+    //-----Inicio FRMEDINA Agosto 2018-----//
+    'Tiempo Te?rico
+    If CRSP_ITZ_HR_THEOR_TIME.Count() > 0 Then
+        CRSP_ITZ_HR_THEOR_TIME.Begin()
+        CRSP_ITZ_NOMINA_GEN.SCO_ID_REF_MOD = CRSP_ITZ_HR_THEOR_TIME.SCO_ID_REF_MOD
+    EndIf
+    //-----Fin FRMEDINA Agosto 2018-----//
+
+    'Depende del pa?s
+    //-----Modificado SAE-GDM Abril 2014-----//
+'    If CRGB_ITZ_HR_CONTRACT.Count() > 0 Then
+'        CRGB_ITZ_HR_CONTRACT.Begin()
+'        CRSP_ITZ_NOMINA_GEN.CMX_ID_CONTRATO_INT = CRGB_ITZ_HR_CONTRACT.SAR_ID_CONTRATO
+'    EndIf
+    'Contrato
+    If CRSP_ITZ_HR_CONTRACT.Count() > 0 Then
+        CRSP_ITZ_HR_CONTRACT.Begin()
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_CONTRATO_INT = CRSP_ITZ_HR_CONTRACT.SSP_ID_CONT_INTERN
+        //-----A?adido SAE-GDM Mayo 2014-----//
+        CRSP_ITZ_NOMINA_GEN.SSP_FEC_INI_CONTRA = CRSP_ITZ_HR_CONTRACT.SSP_FEC_INI_CONTRA
+        CRSP_ITZ_NOMINA_GEN.SSP_FEC_FIN_CONTRA = CRSP_ITZ_HR_CONTRACT.SSP_FEC_FIN_CONTRA
+        CRSP_ITZ_NOMINA_GEN.SSP_FEC_FIN_PV_CON = CRSP_ITZ_HR_CONTRACT.SSP_FEC_FIN_PV_CON
+        //-----Fin a?adido SAE-GDM Mayo 2014-----//
+        //-----A?adido SAE-GDM Junio 2014-----//
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_REL_LAB = CRSP_ITZ_HR_CONTRACT.SSP_ID_REL_LAB        
+        //-----Fin a?adido SAE-GDM Junio 2014-----//
+        //-----A?adido FRMEDINA Agosto 2018-----//
+        CRSP_ITZ_NOMINA_GEN.SSP_FEC_FIN_PR_PRU = CRSP_ITZ_HR_CONTRACT.SSP_FEC_FIN_PR_PRU
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_CONT_LEGAL = CRSP_ITZ_HR_CONTRACT.SSP_ID_CONT_LEGAL
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_CAUSA_SUST = CRSP_ITZ_HR_CONTRACT.SSP_ID_CAUSA_SUST
+        CRSP_ITZ_NOMINA_GEN.SSP_NUSS_SUST = CRSP_ITZ_HR_CONTRACT.SSP_NUSS_SUST
+        CRSP_ITZ_NOMINA_GEN.SSP_PORC_MINUSVAL = CRSP_ITZ_HR_CONTRACT.SSP_PORC_MINUSVAL
+        CRSP_ITZ_NOMINA_GEN.SSP_FEC_INI_A_CONT = CRSP_ITZ_HR_CONTRACT.SSP_FEC_INI_A_CONT
+        CRSP_ITZ_NOMINA_GEN.SSP_MUJER_24 = CRSP_ITZ_HR_CONTRACT.SSP_MUJER_24
+        CRSP_ITZ_NOMINA_GEN.SSP_MUJER_SUBREPR = CRSP_ITZ_HR_CONTRACT.SSP_MUJER_SUBREPR
+        CRSP_ITZ_NOMINA_GEN.SSP_DIAS_PRUEBA = CRSP_ITZ_HR_CONTRACT.SSP_DIAS_PRUEBA
+        CRSP_ITZ_NOMINA_GEN.SSP_CLAUSULA_ADIC = CRSP_ITZ_HR_CONTRACT.SSP_CLAUSULA_ADIC
+        //-----Fin A?adido FRMEDINA Agosto 2018-----//
+        
+    EndIf
+    //-----Fin modificado SAE-GDM Abril 2014-----//
+    
+    'Depende del pa?s
+    //-----Modificado SAE-GDM Abril 2014-----//
+'    If CRGB_ITZ_HR_AGREEMENT.Count() > 0 Then
+'        CRGB_ITZ_HR_AGREEMENT.Begin()
+'        CRSP_ITZ_NOMINA_GEN.CMX_ID_CONVENIO = CRGB_ITZ_HR_AGREEMENT.SAR_ID_CONVENIO
+'    EndIf
+    'Convenio
+    If CRSP_ITZ_HR_AGREEMENT.Count() > 0 Then
+        CRSP_ITZ_HR_AGREEMENT.Begin()
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_CONVENIO = CRSP_ITZ_HR_AGREEMENT.SSP_ID_CONVENIO
+    EndIf
+    //-----Fin modificado SAE-GDM Abril 2014-----//
+    
+    //-----A?adido SAE-GDM Abril 2014-----//
+    'Grupo tarifa
+    If CRSP_ITZ_HR_RATE_GROUP.Count() > 0 Then
+        CRSP_ITZ_HR_RATE_GROUP.Begin()
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_GRUP_TARIFA = CRSP_ITZ_HR_RATE_GROUP.SSP_ID_GRUP_TARIFA
+    EndIf
+    'Ocupaci?n
+    If CRSP_ITZ_HR_OCCUPATION.Count() > 0 Then
+        CRSP_ITZ_HR_OCCUPATION.Begin()
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_OCUPACION = CRSP_ITZ_HR_OCCUPATION.SSP_ID_OCUPACION
+    EndIf
+    'Convenio SS
+    If CRSP_ITZ_HR_AGREEMENT_SS.Count() > 0 Then
+        CRSP_ITZ_HR_AGREEMENT_SS.Begin()
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_CONV_SS = CRSP_ITZ_HR_AGREEMENT_SS.SSP_ID_CONV_SS
+    EndIf
+    'Cabecera TC1
+    If CRSP_ITZ_HR_TC1.Count() > 0 Then
+        CRSP_ITZ_HR_TC1.Begin()
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_CABEC_TC1 = CRSP_ITZ_HR_TC1.SSP_ID_CABEC_TC1
+    EndIf
+    'Tipo de salario
+    If CRSP_ITZ_HR_SALARY_TYPE.Count() > 0 Then
+        CRSP_ITZ_HR_SALARY_TYPE.Begin()
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_TP_SALARIO = CRSP_ITZ_HR_SALARY_TYPE.SSP_ID_TP_SALARIO
+        'FRMEDINA Noviembre 2018
+        'Se utilizara otro campo para la interfaz con M4C
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_TP_SALARIO = CRSP_ITZ_HR_SALARY_TYPE.SSP_ID_TP_SALARIO
+    EndIf
+    
+    'Tipo de ajuste
+    //-----Comentado SAE-GDM Mayo 2014-----//
+'    If CRSP_ITZ_HR_SETTING_TYPE.Count() > 0 Then
+'        CRSP_ITZ_HR_SETTING_TYPE.Begin()
+'        CRSP_ITZ_NOMINA_GEN.SCO_ID_TYPE_ADJUST = CRSP_ITZ_HR_SETTING_TYPE.SCO_ID_TYPE_ADJUST
+'    EndIf
+    //-----Fin a?adido SAE-GDM Abril 2014-----//
+    
+    // ----- Inicio FRMEDINA Noviembre 2018 -----//
+    'Para la interfaz con M4C si se utilizar? el tipo de ajuste
+    If CRSP_ITZ_HR_TYPE_ADJ.Count() > 0 Then
+        CRSP_ITZ_HR_TYPE_ADJ.Begin()
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_TYPE_ADJUST = CRSP_ITZ_HR_TYPE_ADJ.SCO_ID_TYPE_ADJUST
+    EndIf
+    // ----- Fin FRMEDINA Noviembre 2018 -----//
+    
+    //-----A?adido SAE-GDM Mayo 2014-----//
+    'Tipo IRPF
+    If CRSP_ITZ_HR_IRPF_TYPE.Count() > 0 Then
+        CRSP_ITZ_HR_IRPF_TYPE.Begin()
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_CLAV_PERCEP = CRSP_ITZ_HR_IRPF_TYPE.SSP_ID_CLAVE_PERCEP
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_TP_IRPF = CRSP_ITZ_HR_IRPF_TYPE.SSP_ID_TP_IRPF
+    EndIf
+    'Datos perceptor IRPF
+    If CRSP_ITZ_HR_IRPF_PARAM.Count() > 0 Then
+        CRSP_ITZ_HR_IRPF_PARAM.Begin()
+        CRSP_ITZ_NOMINA_GEN.SSP_NUM_HIJOS_IRPF = CRSP_ITZ_HR_IRPF_PARAM.SSP_NUM_HIJOS_IRPF
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_MINUSVALIA = CRSP_ITZ_HR_IRPF_PARAM.SSP_ID_MINUSVALIA
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_EST_IRPF = CRSP_ITZ_HR_IRPF_PARAM.SSP_ID_EST_IRPF
+    EndIf
+    'Colectivo de trabajo
+    If CRSP_ITZ_HR_COLLECTIVE.Count() > 0 Then
+        CRSP_ITZ_HR_COLLECTIVE.Begin()
+        CRSP_ITZ_NOMINA_GEN.SSP_COLECTIVO_TRAB = CRSP_ITZ_HR_COLLECTIVE.SSP_ID_MOTIV_REDUC
+    EndIf
+    'Sindicato
+    If CRSP_ITZ_HR_UNION.Count() > 0 Then
+        CRSP_ITZ_HR_UNION.Begin()
+        CRSP_ITZ_NOMINA_GEN.SGB_ID_SINDICATO = CRSP_ITZ_HR_UNION.SSP_ID_SINDICATO
+    EndIf
+    //-----Fin a?adido SAE-GDM Mayo 2014-----//
+    
+    If SRGB_ITZ_HR_UNION_ST.Count() > 0 Then
+        SRGB_ITZ_HR_UNION_ST.Begin()
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_SINDICATO = SRGB_ITZ_HR_UNION_ST.SGB_ID_UNION_ST
+    EndIf
+    
+    CRSP_ITZ_NOMINA_GEN.CMX_ALIAS_NOM_HR = CRSP_ITZ_HR_DATA.SSP_NUM_MATRICULA
+    //-----Modificado SAE-GDM Abril 2014----//
+    'CRSP_ITZ_NOMINA_GEN.CMX_ID_SOCIEDAD = "01"
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_SOCIEDAD = "05"
+    //-----Fin modificado SAE-GDM Abril 2014-----//
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_TP_SALARIO = CRSP_ITZ_HR_DATA.CMX_ID_TP_SAL_NOM
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_HR_TYPE = CRSP_ITZ_HR_DATA.STD_ID_HR_TYPE
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_EXTERNAL_ORG = CRSP_ITZ_HR_DATA.STD_ID_EXTERNAL_ORG
+    If SRGB_ITZ_HR_PAYMENT_DATA.Count() > 0 Then
+        SRGB_ITZ_HR_PAYMENT_DATA.Begin()
+        'N?mina tiene un cat?logo diferente que se har? por c?digo fijo
+        'SRGB_ITZ_NOMINA_GEN.CMX_ID_PAYM_TYPE = SRGB_ITZ_HR_PAYMENT_DATA.SCO_ID_PAYM_TYPE
+        sTipoPagoRH = SRGB_ITZ_HR_PAYMENT_DATA.SCO_ID_PAYM_TYPE
+        sTipoPagoNom = ""
+        If sTipoPagoRH = "01" Then 'Caja/Efectivo
+            sTipoPagoNom = "3"
+        ElseIf sTipoPagoRH = "02" Then 'Cheque
+            sTipoPagoNom = "2"
+        ElseIf sTipoPagoRH = "03" Then 'Transferencia
+            sTipoPagoNom = "4"
+        Else
+            sTipoPagoNom = "3"
+        EndIf 
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_PAYM_TYPE = sTipoPagoNom
+        'FRMEDINA Noviembre 2018
+        'Para la interfaz con M4C Se requiere utilizar el campo que se obtenga en el hist?rico
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_PAYM_TYPE = SRGB_ITZ_HR_PAYMENT_DATA.SCO_ID_PAYM_TYPE
+        //-----A?adido FRMEDINA Agosto 2018-----//
+        CRSP_ITZ_NOMINA_GEN.SCO_ID_COMP_BANK = SRGB_ITZ_HR_PAYMENT_DATA.SCO_ID_COMP_BANK
+        //-----Fin A?adido FRMEDINA Agosto 2018-----//
+    EndIf
+    'Depende del pa?s
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_EPS = ""
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_AFP = ""
+    
+    'Datos de rol
+    CRSP_ITZ_NOMINA_GEN.CMX_NM_NIVEL = CRSP_ITZ_HR_DATA.STD_N_JOB_INT_CLAS
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_CATEGORIA = CRSP_ITZ_HR_DATA.STD_ID_JOB_CATEGORY
+    'Para obtener los datos del Jefe inmediato, debemos ir a buscar al ?rbol de posiciones
+    SGB_JEFE_INMEDIATO.SGB_CLC_JEFE("",dFechaRol,dFechaRol,sIdHr)
+    If SGB_JEFE_INMEDIATO.Count() > 0 Then
+        SGB_JEFE_INMEDIATO.Begin()
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_JEFE_INM = SGB_JEFE_INMEDIATO.SCO_ID_HR_BOSS
+    EndIf
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_CURRENCY = CRSP_ITZ_HR_DATA.SCO_ID_CURRENCY
+    'Calcularemos el ?rea a la que pertenece el colaborador en base a su Work Unit
+    SGB_FUN_REL_WORK_UNIT.SGB_CLC_AREA_PAR_WU(CRSP_ITZ_HR_DATA.SCO_ID_WORK_UNIT)
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_WORK_UNIT = SGB_FUN_REL_WORK_UNIT.PR_ID_AREA_PARENT
+    If SRGB_ITZ_WL_G_C.Count() > 0 Then
+        SRGB_ITZ_WL_G_C.Begin()
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_GERENCIA_CTRL = SRGB_ITZ_WL_G_C.CMX_ID_GERENCIA_CTRL
+    Else
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_GERENCIA_CTRL = "NA"
+    EndIf
+    If SRGB_ITZ_WL_G_P.Count() > 0 Then
+        SRGB_ITZ_WL_G_P.Begin()
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_GERENCIA_PERSONAL = SRGB_ITZ_WL_G_P.CMX_ID_GERENCIA_PERSONAL
+    Else
+        CRSP_ITZ_NOMINA_GEN.CMX_ID_GERENCIA_PERSONAL = "NA"
+    EndIf
+    
+    CRSP_ITZ_NOMINA_GEN.SCO_ID_POSITION = CRSP_ITZ_HR_DATA.SCO_ID_POSITION
+    CRSP_ITZ_NOMINA_GEN.SCO_NM_POSITION = CRSP_ITZ_HR_DATA.SCO_NM_POSITION
+    
+    //-----Agregado SAE-GDM Mayo 2014-----//
+    'Categor?a profesional
+    If CRSP_ITZ_HR_CATEGORY.Count() > 0 Then
+        CRSP_ITZ_HR_CATEGORY.Begin()
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_CATEGORIA = CRSP_ITZ_HR_CATEGORY.SSP_ID_CATEGORIA
+    EndIf
+    //-----Fin agregado SAE-GDM Mayo 2014-----//
+    
+    'Datos extras
+    'Inicio FRMEDINA Octubre 2018
+    'Para el tipo TRADES el valor ser? T
+    If CRSP_ITZ_HR_DATA.STD_ID_HR_TYPE = "08" Then
+        CRSP_ITZ_NOMINA_GEN.CMX_STATUS_KRONOS = "T"
+        CRSP_ITZ_NOMINA_GEN.CMX_PROCESADO_LMS = "T"
+    Else
+        CRSP_ITZ_NOMINA_GEN.CMX_STATUS_KRONOS = "0"
+        CRSP_ITZ_NOMINA_GEN.CMX_PROCESADO_LMS = "0"
+    EndIf
+    'Fin FRMEDINA Octubre 2018
+    CRSP_ITZ_NOMINA_GEN.SGB_ID_CHANGE_ORIGIN = ARG_ORIGEN_MOV
+    'Inicio FRMEDINA Octubre 2018
+    'Para el tipo TRADES el valor ser? T
+    If CRSP_ITZ_HR_DATA.STD_ID_HR_TYPE = "08" Then
+
+        CRSP_ITZ_NOMINA_GEN.CMX_PROCESADO_TOPS = "T"
+    Else
+        CRSP_ITZ_NOMINA_GEN.CMX_PROCESADO_TOPS = ""
+    EndIf
+    'Fin FRMEDINA Octubre 2018    
+    CRSP_ITZ_NOMINA_GEN.TOPS_COUNTRY = ""
+    CRSP_ITZ_NOMINA_GEN.CMX_ID_JEFE_ANT = ""
+    
+    /************Agregado 7/21/2016 HPE HPCRODRMAR ************************/
+    'Discapacidad
+     CRSP_ITZ_NOMINA_GEN.SSP_ID_DISCAPACIDAD = CRSP_ITZ_HR_DATA.SSP_ID_DISCAPACIDAD    
+
+    'Historico de Jornada Parcial
+    IF CRSP_ITZ_HR_PORC_JORN.COUNT() > 0 THEN      
+     CRSP_ITZ_NOMINA_GEN.SSP_FEC_INI_JORN_P  = CRSP_ITZ_HR_PORC_JORN.SSP_FEC_INI_JORN_P
+     CRSP_ITZ_NOMINA_GEN.SSP_FEC_FIN_JORN_P  = CRSP_ITZ_HR_PORC_JORN.SSP_FEC_FIN_JORN_P
+     CRSP_ITZ_NOMINA_GEN.SSP_VALOR_COEF_T_P  = CRSP_ITZ_HR_PORC_JORN.SSP_VALOR_COEF_T_P
+     CRSP_ITZ_NOMINA_GEN.SSP_NUM_HORAS       = CRSP_ITZ_HR_PORC_JORN.SSP_NUM_HORAS
+     CRSP_ITZ_NOMINA_GEN.SSP_TIPO_HORAS      = CRSP_ITZ_HR_PORC_JORN.SSP_TIPO_HORAS
+     CRSP_ITZ_NOMINA_GEN.SSP_JP_REG_IRREG    = CRSP_ITZ_HR_PORC_JORN.SSP_JP_REG_IRREG
+     CRSP_ITZ_NOMINA_GEN.SSP_NUM_DIAS_JP     = CRSP_ITZ_HR_PORC_JORN.SSP_NUM_DIAS_JP
+     
+    ENDIF
+    //----- A?adido FRMEDINA Agosto 2018-----//
+    IF CRSP_ITZ_HR_PORC_GLEGA.COUNT() > 0 THEN
+        CRSP_ITZ_NOMINA_GEN.SSP_PORC_GLEGAL = CRSP_ITZ_HR_PORC_GLEGA.SSP_PORC_GLEGAL
+        CRSP_ITZ_NOMINA_GEN.SSP_ID_MOTIV_REDUC = CRSP_ITZ_HR_PORC_GLEGA.SSP_ID_MOTIV_REDUC
+    ENDIF
+    //----- Fin A?adido FRMEDINA Agosto 2018-----//
+'    'Historico de Prorogas 
+    IF CRSP_ITZ_HR_PRORROGAS.COUNT() > 0 THEN
+     CRSP_ITZ_NOMINA_GEN.SSP_FEC_INI_PROR    = CRSP_ITZ_HR_PRORROGAS.SSP_FEC_INI_PROR
+     CRSP_ITZ_NOMINA_GEN.SSP_FEC_FIN_PROR    = CRSP_ITZ_HR_PRORROGAS.SSP_FEC_FIN_PROR
+    ENDIF
+    
+    //----- Inicio FRMEDINA Noviembre 2018-----//
+    'Se agregan nuevos campos para el tipo de contrataci?n TRADE
+    CRSP_ITZ_NOMINA_GEN.SSE_N_REG_CONT_TRADE    = CRSP_ITZ_HR_DATA.SSE_N_REG_CONT_TRADE
+    CRSP_ITZ_NOMINA_GEN.SSP_CL_IVA              = CRSP_ITZ_HR_DATA.SSP_CL_IVA
+    CRSP_ITZ_NOMINA_GEN.SSP_COD_IAE             = CRSP_ITZ_HR_DATA.SSP_COD_IAE
+    CRSP_ITZ_NOMINA_GEN.SSP_COD_PROVEEDOR       = CRSP_ITZ_HR_DATA.SSP_COD_PROVEEDOR
+    CRSP_ITZ_NOMINA_GEN.SSP_COD_VENDEDOR        = CRSP_ITZ_HR_DATA.SSP_COD_VENDEDOR
+    CRSP_ITZ_NOMINA_GEN.SSP_DT_CADUC_TRANS      = CRSP_ITZ_HR_DATA.SSP_DT_CADUC_TRANS
+    CRSP_ITZ_NOMINA_GEN.SSP_DT_F_M_ALIMENTOS    = CRSP_ITZ_HR_DATA.SSP_DT_F_M_ALIMENTOS
+    CRSP_ITZ_NOMINA_GEN.SSP_DTO_IRPF            = CRSP_ITZ_HR_DATA.SSP_DTO_IRPF
+    CRSP_ITZ_NOMINA_GEN.SSP_ID_CENTRO_FISICO    = CRSP_ITZ_HR_DATA.SSP_ID_CENTRO_FISICO
+    CRSP_ITZ_NOMINA_GEN.SSP_ID_MARCA            = CRSP_ITZ_HR_DATA.SSP_ID_MARCA
+    CRSP_ITZ_NOMINA_GEN.SSP_ID_MODELO           = CRSP_ITZ_HR_DATA.SSP_ID_MODELO
+    CRSP_ITZ_NOMINA_GEN.SSP_ID_TP_ACTIVIDAD     = CRSP_ITZ_HR_DATA.SSP_ID_TP_ACTIVIDAD
+    CRSP_ITZ_NOMINA_GEN.SSP_ID_TP_AUTONOMO      = CRSP_ITZ_HR_DATA.SSP_ID_TP_AUTONOMO
+    CRSP_ITZ_NOMINA_GEN.SSP_ID_TP_GESTION       = CRSP_ITZ_HR_DATA.SSP_ID_TP_GESTION
+    CRSP_ITZ_NOMINA_GEN.SSP_MATRICULA           = CRSP_ITZ_HR_DATA.SSP_MATRICULA
+    CRSP_ITZ_NOMINA_GEN.SSP_TARJETA_TRANSPORTE  = CRSP_ITZ_HR_DATA.SSP_TARJETA_TRANSPORTE
+    //----- Fin FRMEDINA Noviembre 2018-----//
+    /************   FIN DE LA MODIFICACION ************************/
+
+    SRGB_ITZ_NOMINA.Persist_Tree()
+    'SRGB_ITZ_NOMINA_GEN.Persist_Tree()
+    
+EndIf
